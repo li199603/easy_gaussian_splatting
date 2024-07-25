@@ -1,0 +1,14 @@
+data_format: colmap
+dataloader_workers: 2
+log_every: 200
+
+eval: true  # true: the train dataset does not contain the eval dataset，false: all the data is used for training
+eval_split_ratio: 0.1
+eval_every: 2000
+eval_render_num: 3
+
+num_iterations: 10000
+save_model_iterations: [10000]
+
+use_masks: false
+
