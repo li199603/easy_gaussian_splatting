@@ -24,7 +24,7 @@ log_scales_lr: 0.001
 quats_lr: 0.001
 sh_0_lr: 0.0025
 sh_rest_lr: 0.000125
-opacity_scores_lr: 0.05
+logit_opacities_lr: 0.05
 
 refine_start: 1000
 refine_stop: 8000
