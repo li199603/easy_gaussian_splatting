@@ -159,3 +159,10 @@ def get_downscale_factor(
         )
     downscale_factor = (h_downscale_factor + w_downscale_factor) / 2
     return downscale_factor
+
+
+def data_to_device(data: Dict[str, Any]):
+    data["K"] = data["K"].cuda(non_blocking=True)
+    data["w2c"] = data["w2c"].cuda(non_blocking=True)
+    data["image"] = data["image"].cuda(non_blocking=True)
+    data["mask"] = data["mask"].cuda(non_blocking=True)

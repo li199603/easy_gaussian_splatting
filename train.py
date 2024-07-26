@@ -8,7 +8,9 @@ import random
 import numpy as np
 from datetime import datetime
 import torch
+from torch.utils.data import DataLoader
 from scene import Scene
+from model import GaussianModel
 
 
 def train(cfg):
@@ -27,6 +29,38 @@ def train(cfg):
         cfg.eval,
         cfg.eval_split_ratio,
         cfg.use_masks,
+    )
+    train_dataloader = DataLoader(
+        scene.train_dataset,
+        batch_size=1,
+        shuffle=True,
+        pin_memory=True,
+        num_workers=cfg.dataloader_workers,
+        collate_fn=lambda x: x[0],
+    )
+    eval_dataloader = DataLoader(
+        scene.eval_dataset,
+        batch_size=1,
+        pin_memory=True,
+        num_workers=cfg.dataloader_workers,
+        collate_fn=lambda x: x[0],
+        persistent_workers=cfg.dataloader_workers != 0,
+    )
+    gaussian_model = GaussianModel(
+        scene.pc,
+        cfg.sh_degree,
+        cfg.sh_degree_interval,
+        cfg.means_lr_init,
+        cfg.means_lr_final,
+        cfg.means_lr_schedule_max_steps,
+        cfg.densify_grad_thresh,
+        cfg.densify_scale_thresh,
+        cfg.num_splits,
+        cfg.prune_radii_ratio_thresh,
+        cfg.prune_scale_thresh,
+        cfg.min_opacity,
+        cfg.use_scale_regularization,
+        cfg.max_scale_ratio,
     )
 
 

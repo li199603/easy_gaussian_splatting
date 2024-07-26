@@ -1,8 +1,10 @@
+gsplat>=1.0.0
+scikit-learn
+tensorboard
 pyyaml
 easydict
 loguru
 tqdm
-tensorboard
 plyfile
 pyquaternion
 pillow

@@ -2,7 +2,9 @@ data_format: colmap
 dataloader_workers: 2
 log_every: 200
 
-eval: true  # true: the train dataset does not contain the eval dataset，false: all the data is used for training
+# true: the train dataset does not contain the eval dataset
+# false: all the data is used for training
+eval: true
 eval_split_ratio: 0.1
 eval_every: 2000
 eval_render_num: 3
@@ -10,5 +12,34 @@ eval_render_num: 3
 num_iterations: 10000
 save_model_iterations: [10000]
 
+sh_degree: 3
+sh_degree_interval: 1500
+
 use_masks: false
+
+means_lr_init: 0.001
+means_lr_final: 0.000001
+means_lr_schedule_max_steps: 8000
+log_scales_lr: 0.001
+quats_lr: 0.001
+sh_0_lr: 0.0025
+sh_rest_lr: 0.000125
+opacity_scores_lr: 0.05
+
+refine_start: 1000
+refine_stop: 8000
+refine_every: 150
+reset_opacities_every: 2000
+min_opacity: 0.005
+densify_grad_thresh: 0.0005
+densify_scale_thresh: 0.06
+num_splits: 2
+prune_radii_ratio_thresh: 0.15
+prune_scale_thresh: 1.0
+
+lambda_ssim: 0.2
+
+use_scale_regularization: false
+max_scale_ratio: 10.0
+lambda_scale: 0.1
 
