@@ -11,3 +11,4 @@ pillow
 viser
 matplotlib
 open3d
+torchmetrics[image]

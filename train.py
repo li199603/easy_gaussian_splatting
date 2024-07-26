@@ -9,8 +9,13 @@ import numpy as np
 from datetime import datetime
 import torch
 from torch.utils.data import DataLoader
-from scene import Scene
-from model import GaussianModel
+from scene import Scene, data_to_device
+from model import gaussian
+import tqdm
+from torch.utils.tensorboard import SummaryWriter
+from eval import Evaluator
+from typing import Dict, Any
+import time
 
 
 def train(cfg):
@@ -46,7 +51,7 @@ def train(cfg):
         collate_fn=lambda x: x[0],
         persistent_workers=cfg.dataloader_workers != 0,
     )
-    gaussian_model = GaussianModel(
+    gaussian_model = gaussian.GaussianModel(
         scene.pc,
         cfg.sh_degree,
         cfg.sh_degree_interval,
@@ -62,6 +67,86 @@ def train(cfg):
         cfg.use_scale_regularization,
         cfg.max_scale_ratio,
     )
+    optimizer = gaussian.build_optimizers(
+        gaussian_model,
+        cfg.means_lr_init,
+        cfg.log_scales_lr,
+        cfg.quats_lr,
+        cfg.sh_0_lr,
+        cfg.sh_rest_lr,
+        cfg.logit_opacities_lr,
+    )
+    loss_computer = gaussian.LossComputer(
+        gaussian_model, cfg.lambda_ssim, cfg.lambda_scale
+    )
+    evaluator = Evaluator()
+
+    progress_bar = tqdm.tqdm(
+        total=cfg.num_iterations, ncols=120, postfix={"loss": float("inf")}
+    )
+    tb_writer = SummaryWriter(Path(cfg.output_path) / "tensorboard")
+    step = 0
+    for data in train_dataloader:
+        step += 1
+        all_tb_info = {}
+
+        data_to_device(data)
+        model_output = gaussian_model(data)
+        loss_dict = loss_computer.get_loss_dict(
+            model_output["render_img"],
+            data["image"],
+            data["mask"],
+        )
+        loss_dict["total"].backward()
+
+        all_tb_info["train/loss"] = {}
+        for name, loss in loss_dict.items():
+            all_tb_info["train/loss"][name] = loss.item()
+
+        with torch.no_grad():
+            # save model
+            if step in cfg.save_model_iterations:
+                model_save_path = (
+                    Path(cfg.output_path) / "checkpoints" / f"iteration_{step}.pth"
+                )
+                model_save_path.parent.mkdir(exist_ok=True)
+                torch.save(gaussian_model, model_save_path)
+            # evaluation
+            if step == 1 or step % cfg.eval_every == 0:
+                gaussian_model.eval()
+                # TODO
+                gaussian_model.train()
+            # refine
+            if cfg.refine_start < step <= cfg.refine_stop:
+                gaussian_model.update_statistics(data, model_output)
+                if (step - cfg.refine_start) % cfg.refine_every == 0:
+                    tb_info = gaussian_model.densify_and_prune()
+                    all_tb_info.update(tb_info)
+                if (step - cfg.refine_start) % cfg.reset_opacities_every == 0:
+                    gaussian_model.reset_opacities()
+            # increase sh_degree
+            if cfg.sh_degree_interval != 0 and step % cfg.sh_degree_interval == 0:
+                gaussian_model.up_sh_degree()
+            # update learning_rate
+            gaussian_model.update_learning_rate(step)
+            # write to tensorboard
+            if step == 1 or step % cfg.log_every == 0:
+                tb_report(tb_writer, step, all_tb_info)
+            # update progress_bar
+            if step % 10 == 0:
+                progress_bar.set_postfix(
+                    {"loss": "%7.5f" % (loss_dict["total"].item())}
+                )
+                progress_bar.update(10)
+
+        optimizer.step()
+        optimizer.zero_grad()
+
+    progress_bar.update(progress_bar.total - progress_bar.n)
+    progress_bar.close()
+    tb_writer.close()
+    
+    # TODO: evaluation in the end of training 
 
 
 def set_global_state(seed: int, device: str):
@@ -78,6 +163,22 @@ def set_global_state(seed: int, device: str):
         ]
     }
     logger.configure(**log_config)  # type: ignore
+
+
+def tb_report(tb_writer: SummaryWriter, step: int, tb_info: Dict[str, Any]):
+    for key, value in tb_info.items():
+        if isinstance(value, dict):
+            tb_writer.add_scalars(key, value, step, walltime=time.time())
+        elif isinstance(value, float) or isinstance(value, int):
+            tb_writer.add_scalar(key, value, step, walltime=time.time())
+        elif isinstance(value, np.ndarray):
+            tb_writer.add_image(
+                key, value, step, walltime=time.time(), dataformats="HWC"
+            )
+        else:
+            logger.warning(
+                f"unsupported type for tensorboard report: {type(value)} (key={key})"
+            )
 
 
 if __name__ == "__main__":
@@ -98,5 +199,10 @@ if __name__ == "__main__":
         cfg["data"] = args.data
         cfg["output"] = args.output
     cfg = easydict.EasyDict(cfg)
+    if cfg.num_iterations not in cfg.save_model_iterations:
+        logger.warning(
+            "num_iterations is not in save_model_iterations, append num_iterations to save_model_iterations"
+        )
+        cfg.save_model_iterations.append(cfg.num_iterations)
 
     train(cfg)

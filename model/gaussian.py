@@ -6,6 +6,7 @@ import numpy as np
 from .utils import *
 from typing import List, Optional, Dict, Any
 from gsplat.rendering import rasterization  # type: ignore
+from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 
 class GaussianModel(nn.Module):
@@ -351,8 +352,9 @@ class GaussianModel(nn.Module):
             absgrad=True,
             packed=False,
         )
+        render_img = torch.clamp(batch_render_imgs[0], min=0.0, max=1.0)
         output = {
-            "render_img": torch.clamp(batch_render_imgs[0], min=0.0, max=1.0),  # [H, W, C]
+            "render_img": render_img,  # [H, W, 3]
             "batch_xys": meta["means2d"],  # [B, N, 2]  B=1
             "batch_radii": meta["radii"],  # [B, N]
         }
@@ -369,3 +371,70 @@ class GaussianModel(nn.Module):
             scale_reg = torch.mean(scale_reg)
             regularization_dict["scale_reg"] = scale_reg
         return regularization_dict
+
+
+def build_optimizers(
+    model: GaussianModel,
+    means_lr: float,
+    log_scales_lr: float,
+    quats_lr: float,
+    sh_0_lr: float,
+    sh_rest_lr: float,
+    logit_opacities_lr: float,
+) -> torch.optim.Optimizer:
+    params = [
+        {"params": [model.means], "lr": means_lr, "name": "means"},
+        {"params": [model.log_scales], "lr": log_scales_lr, "name": "log_scales"},
+        {"params": [model.quats], "lr": quats_lr, "name": "quats"},
+        {"params": [model.sh_0], "lr": sh_0_lr, "name": "sh_0"},
+        {"params": [model.sh_rest], "lr": sh_rest_lr, "name": "sh_rest"},
+        {
+            "params": [model.logit_opacities],
+            "lr": logit_opacities_lr,
+            "name": "logit_opacities",
+        },
+    ]
+    optimizer = torch.optim.Adam(params)
+    model.register_gs_optimizer(optimizer)
+    return optimizer
+
+
+class LossComputer:
+    def __init__(self, model: GaussianModel, lambda_ssim: float, lambda_scale: float):
+        self.model = model
+        self.lambda_ssim = lambda_ssim
+        self.lambda_scale = lambda_scale
+        self.ssim = StructuralSimilarityIndexMeasure(data_range=1.0).cuda()
+
+    def get_loss_dict(
+        self,
+        render_img: Tensor,  # [H, W, 3]
+        gt_img: Tensor,  # [H, W, 3]
+        mask: Tensor,  # [H, W]
+    ) -> Dict[str, Tensor]:
+        mask = mask.unsqueeze(2).repeat(1, 1, 3)
+        render_img = mask * gt_img + (1.0 - mask) * render_img
+        l1_loss = self._get_l1_loss(render_img, gt_img)
+        ssim_loss = self._get_ssim_loss(render_img, gt_img)
+        loss_dict = {
+            "l1": l1_loss,
+            "ssim": ssim_loss,
+        }
+
+        total_loss = (1.0 - self.lambda_ssim) * l1_loss + self.lambda_ssim * ssim_loss
+
+        regularization_dict = self.model.get_regularization_dict()
+        if "scale_reg" in regularization_dict:
+            loss_dict["scale_reg"] = regularization_dict["scale_reg"]
+            total_loss += self.lambda_scale * regularization_dict["scale_reg"]
+
+        loss_dict["total"] = total_loss
+        return loss_dict
+
+    def _get_l1_loss(self, pred_img: Tensor, gt_img: Tensor) -> Tensor:
+        return F.l1_loss(pred_img, gt_img)
+
+    def _get_ssim_loss(self, pred_img: Tensor, gt_img: Tensor) -> Tensor:
+        return 1.0 - self.ssim(
+            gt_img.permute(2, 0, 1)[None, ...], pred_img.permute(2, 0, 1)[None, ...]
+        )
