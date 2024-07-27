@@ -1,4 +1,4 @@
-from typing import Literal, Tuple, List, Dict, Any
+from typing import Literal, Tuple, List, Dict, Any, Optional
 import random
 from .colmap_loader import load_colmap_data
 from .blender_loader import load_blender_data
@@ -36,7 +36,7 @@ class Scene:
         self,
         data_path: str,
         data_format: Literal["colmap", "blender"],
-        output_path: str,
+        output_path: Optional[str],
         num_iterations: int,
         eval: bool,
         eval_split_ratio: float,
@@ -60,7 +60,8 @@ class Scene:
         self.train_dataset = SceneDataset(self, "train")
         self.eval_dataset = SceneDataset(self, "eval")
 
-        self._export_cameras_json(Path(output_path) / "cameras.json")
+        if output_path is not None:
+            self._export_cameras_json(Path(output_path) / "cameras.json")
 
     def nbr_data(self, split: Literal["train", "eval"]) -> int:
         if split == "train":

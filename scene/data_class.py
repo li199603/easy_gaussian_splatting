@@ -135,7 +135,6 @@ class Frame:
         K = torch.tensor([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=torch.float32)
 
         data = {
-            "image_name": self.image_path.name,
             "K": K,  # [3, 3]
             "height": ih,
             "width": iw,

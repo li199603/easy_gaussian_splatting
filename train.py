@@ -16,16 +16,10 @@ from torch.utils.tensorboard import SummaryWriter
 from eval import Evaluator
 from typing import Dict, Any
 import time
+from eval import eval
 
 
-def train(cfg):
-    project_name = Path(cfg.data).stem
-    time_formatted = datetime.now().strftime(r"%m-%d_%H-%M-%S")
-    cfg.output = str(Path(cfg.output) / project_name / time_formatted)
-    Path(cfg.output).mkdir(parents=True)
-    with open(Path(cfg.output) / "config.yaml", "w") as f:
-        yaml.dump(dict(cfg), f, sort_keys=False)
-
+def train(cfg: easydict.EasyDict):
     scene = Scene(
         cfg.data,
         cfg.data_format,
@@ -79,7 +73,7 @@ def train(cfg):
     loss_computer = gaussian.LossComputer(
         gaussian_model, cfg.lambda_ssim, cfg.lambda_scale
     )
-    evaluator = Evaluator()
+    evaluator = Evaluator(cfg.eval_render_num)
 
     progress_bar = tqdm.tqdm(
         total=cfg.num_iterations, ncols=120, postfix={"loss": float("inf")}
@@ -88,7 +82,7 @@ def train(cfg):
     step = 0
     for data in train_dataloader:
         step += 1
-        all_tb_info = {}
+        all_tb_info: Dict[str, Any] = {}
 
         data_to_device(data)
         model_output = gaussian_model(data)
@@ -114,7 +108,12 @@ def train(cfg):
             # evaluation
             if step == 1 or step % cfg.eval_every == 0:
                 gaussian_model.eval()
-                # TODO
+                metrics_dict = evaluator(eval_dataloader, gaussian_model)
+                for key, value in metrics_dict.items():
+                    if "render" in key:
+                        all_tb_info[f"render/{key}"] = value
+                    if key in ["psnr", "ssim", "lpips"]:
+                        all_tb_info[f"eval/{key}"] = value
                 gaussian_model.train()
             # refine
             if cfg.refine_start < step <= cfg.refine_stop:
@@ -145,8 +144,6 @@ def train(cfg):
     progress_bar.update(progress_bar.total - progress_bar.n)
     progress_bar.close()
     tb_writer.close()
-    
-    # TODO: evaluation in the end of training 
 
 
 def set_global_state(seed: int, device: str):
@@ -181,14 +178,7 @@ def tb_report(tb_writer: SummaryWriter, step: int, tb_info: Dict[str, Any]):
             )
 
 
-if __name__ == "__main__":
-    set_global_state(seed=0, device="cuda:0")
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", "-c", type=str, required=True)
-    parser.add_argument("--data", "-d", type=str, required=True)
-    parser.add_argument("--output", "-o", type=str, required=True)
-    args = parser.parse_args()
-
+def parse_cfg(args) -> easydict.EasyDict:
     if not Path(args.config).exists():
         raise FileNotFoundError(f"config does not exist: {args.config}")
     if not Path(args.data).exists():
@@ -199,10 +189,32 @@ if __name__ == "__main__":
         cfg["data"] = args.data
         cfg["output"] = args.output
     cfg = easydict.EasyDict(cfg)
+
     if cfg.num_iterations not in cfg.save_model_iterations:
         logger.warning(
             "num_iterations is not in save_model_iterations, append num_iterations to save_model_iterations"
         )
         cfg.save_model_iterations.append(cfg.num_iterations)
 
+    project_name = Path(cfg.data).stem
+    time_formatted = datetime.now().strftime(r"%m-%d_%H-%M-%S")
+    cfg.output = str(Path(cfg.output) / project_name / time_formatted)
+    Path(cfg.output).mkdir(parents=True)
+    with open(Path(cfg.output) / "config.yaml", "w") as f:
+        yaml.dump(dict(cfg), f, sort_keys=False)
+
+    return cfg
+
+
+if __name__ == "__main__":
+    set_global_state(seed=0, device="cuda:0")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", "-c", type=str, required=True)
+    parser.add_argument("--data", "-d", type=str, required=True)
+    parser.add_argument("--output", "-o", type=str, required=True)
+    args = parser.parse_args()
+    cfg = parse_cfg(args)
+
     train(cfg)
+    logger.info("training finished")
+    eval(cfg.output)

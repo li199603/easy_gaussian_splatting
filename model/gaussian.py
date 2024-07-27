@@ -431,10 +431,10 @@ class LossComputer:
         loss_dict["total"] = total_loss
         return loss_dict
 
-    def _get_l1_loss(self, pred_img: Tensor, gt_img: Tensor) -> Tensor:
-        return F.l1_loss(pred_img, gt_img)
+    def _get_l1_loss(self, render_img: Tensor, gt_img: Tensor) -> Tensor:
+        return F.l1_loss(render_img, gt_img)
 
-    def _get_ssim_loss(self, pred_img: Tensor, gt_img: Tensor) -> Tensor:
-        return 1.0 - self.ssim(
-            gt_img.permute(2, 0, 1)[None, ...], pred_img.permute(2, 0, 1)[None, ...]
-        )
+    def _get_ssim_loss(self, render_img: Tensor, gt_img: Tensor) -> Tensor:
+        render_img = render_img.permute(2, 0, 1)[None, ...]  # [1, 3, H, W]
+        gt_img = gt_img.permute(2, 0, 1)[None, ...]  # [1, 3, H, W]
+        return 1.0 - self.ssim(gt_img, render_img)

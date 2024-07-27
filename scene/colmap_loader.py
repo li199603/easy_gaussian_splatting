@@ -160,11 +160,9 @@ def load_colmap_data(path: str, use_masks: bool) -> Tuple[List[Frame], Pointclou
     camera_map = load_intrinsics_binary(intrinsics_path)
     image_map = load_extrinsics_binary(extrinsics_path)
     pc = load_pointcloud(pointcloud_path)
-    logger.info(
-        f"colmap data: {len(camera_map)} cameras, {len(image_map)} images, {pc.nbr_points} points"
-    )
 
     frames: List[Frame] = []
+    mask_count = 0
     for image_id in image_map:
         image = image_map[image_id]
         camera = camera_map[image.camera_id]
@@ -186,5 +184,13 @@ def load_colmap_data(path: str, use_masks: bool) -> Tuple[List[Frame], Pointclou
                 w2c,
             )
         )
+        if frames[-1].mask_path is not None:
+            mask_count += 1
     frames.sort(key=lambda frame: frame.image_path)
+    
+    msg = f"colmap data: {len(camera_map)} cameras, {len(image_map)} images, {pc.nbr_points} points"
+    if use_masks:
+        msg += f", {mask_count} masks"
+    logger.info(msg)
+    
     return frames, pc
