@@ -26,6 +26,7 @@ class GaussianModel(nn.Module):
         min_opacity: float,
         use_scale_regularization: bool,
         max_scale_ratio: float,
+        white_background: bool,
     ):
         super().__init__()
         # mean and covariance
@@ -77,6 +78,12 @@ class GaussianModel(nn.Module):
         self.USE_SCALE_REGULARIZATION = use_scale_regularization
         self.MAX_SCALE_RATIO = torch.tensor(
             max_scale_ratio, dtype=torch.float32, device="cuda"
+        )
+        self.background = torch.full(
+            (3,),
+            fill_value=1.0 if white_background else 0.0,
+            dtype=torch.float32,
+            device="cuda",
         )
 
         self.cuda()
@@ -349,6 +356,7 @@ class GaussianModel(nn.Module):
             Ks=data["K"][None],
             width=data["width"],
             height=data["height"],
+            backgrounds=self.background[None],
             absgrad=True,
             packed=False,
         )

@@ -1,4 +1,5 @@
 data_format: colmap
+white_background: false
 dataloader_workers: 2
 log_every: 200
 

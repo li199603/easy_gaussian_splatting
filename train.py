@@ -24,6 +24,7 @@ def train(cfg: easydict.EasyDict):
         cfg.data,
         cfg.data_format,
         cfg.output,
+        cfg.white_background,
         cfg.num_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
@@ -60,6 +61,7 @@ def train(cfg: easydict.EasyDict):
         cfg.min_opacity,
         cfg.use_scale_regularization,
         cfg.max_scale_ratio,
+        cfg.white_background,
     )
     optimizer = gaussian.build_optimizers(
         gaussian_model,
@@ -129,7 +131,7 @@ def train(cfg: easydict.EasyDict):
             # update learning_rate
             gaussian_model.update_learning_rate(step)
             # write to tensorboard
-            if step == 1 or step % cfg.log_every == 0:
+            if step == 1 or step % cfg.log_every == 0 or step % cfg.eval_every == 0:
                 tb_report(tb_writer, step, all_tb_info)
             # update progress_bar
             if step % 10 == 0:

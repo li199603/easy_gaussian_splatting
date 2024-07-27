@@ -187,10 +187,10 @@ def load_colmap_data(path: str, use_masks: bool) -> Tuple[List[Frame], Pointclou
         if frames[-1].mask_path is not None:
             mask_count += 1
     frames.sort(key=lambda frame: frame.image_path)
-    
+
     msg = f"colmap data: {len(camera_map)} cameras, {len(image_map)} images, {pc.nbr_points} points"
     if use_masks:
         msg += f", {mask_count} masks"
     logger.info(msg)
-    
+
     return frames, pc

@@ -106,14 +106,26 @@ class Frame:
         plt.show()
         plt.close()
 
-    def to_data(self) -> Dict[str, Any]:
+    def to_data(self, white_background: bool) -> Dict[str, Any]:
         w2c = torch.tensor(self.w2c, dtype=torch.float32)
 
         image = Image.open(self.image_path)
-        if image.mode != "RGB":
-            raise ValueError("only support image on 'RGB' mode")
-        image_tensor = torch.tensor(image, dtype=torch.float32) / 255.0
-        ih, iw = image_tensor.shape[:2]
+        ih, iw = image.size
+        if image.mode == "RGB":
+            image_tensor = torch.tensor(image, dtype=torch.float32) / 255.0
+        elif image.mode == "RGBA":
+            image_tensor = torch.tensor(image, dtype=torch.float32) / 255.0
+            background = (
+                torch.ones((ih, iw, 3), dtype=torch.float32)
+                if white_background
+                else torch.ones((ih, iw, 3), dtype=torch.float32)
+            )
+            alpha = image_tensor[..., 3:4]
+            image_tensor = image_tensor[..., :3] * alpha + background * (1 - alpha)
+        else:
+            raise ValueError(
+                f"only support image on 'RGB' or 'RGBA' mode, but get '{image.mode}'"
+            )
 
         if self.mask_path is not None:
             mask = Image.open(self.mask_path)

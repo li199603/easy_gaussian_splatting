@@ -37,11 +37,13 @@ class Scene:
         data_path: str,
         data_format: Literal["colmap", "blender"],
         output_path: Optional[str],
+        white_background: bool,
         num_iterations: int,
         eval: bool,
         eval_split_ratio: float,
         use_masks: bool,
     ):
+        self.white_background = white_background
         if data_format == "colmap":
             self.frames, self.pc = load_colmap_data(data_path, use_masks)
         elif data_format == "blender":
@@ -78,7 +80,7 @@ class Scene:
             frame = self.frames[self.eval_indexes[index]]
         else:
             raise ValueError(f"Invalid split: {split}")
-        return frame.to_data()
+        return frame.to_data(self.white_background)
 
     def _export_cameras_json(self, save_path: Path):
         frame_jsons = [frame.to_json(id) for id, frame in enumerate(self.frames)]
