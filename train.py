@@ -80,7 +80,7 @@ def train(cfg: easydict.EasyDict):
     progress_bar = tqdm.tqdm(
         total=cfg.num_iterations, ncols=120, postfix={"loss": float("inf")}
     )
-    tb_writer = SummaryWriter(Path(cfg.output_path) / "tensorboard")
+    tb_writer = SummaryWriter(Path(cfg.output) / "tensorboard")
     step = 0
     for data in train_dataloader:
         step += 1
@@ -103,7 +103,7 @@ def train(cfg: easydict.EasyDict):
             # save model
             if step in cfg.save_model_iterations:
                 model_save_path = (
-                    Path(cfg.output_path) / "checkpoints" / f"iteration_{step}.pth"
+                    Path(cfg.output) / "checkpoints" / f"iteration_{step}.pth"
                 )
                 model_save_path.parent.mkdir(exist_ok=True)
                 torch.save(gaussian_model, model_save_path)
@@ -131,7 +131,12 @@ def train(cfg: easydict.EasyDict):
             # update learning_rate
             gaussian_model.update_learning_rate(step)
             # write to tensorboard
-            if step == 1 or step % cfg.log_every == 0 or step % cfg.eval_every == 0:
+            if (
+                step == 1
+                or step % cfg.log_every == 0
+                or step % cfg.eval_every == 0
+                or (step - cfg.refine_start) % cfg.refine_every == 0
+            ):
                 tb_report(tb_writer, step, all_tb_info)
             # update progress_bar
             if step % 10 == 0:
@@ -201,6 +206,7 @@ def parse_cfg(args) -> easydict.EasyDict:
     project_name = Path(cfg.data).stem
     time_formatted = datetime.now().strftime(r"%m-%d_%H-%M-%S")
     cfg.output = str(Path(cfg.output) / project_name / time_formatted)
+    logger.info(f"output dir: {cfg.output}")
     Path(cfg.output).mkdir(parents=True)
     with open(Path(cfg.output) / "config.yaml", "w") as f:
         yaml.dump(dict(cfg), f, sort_keys=False)
@@ -213,7 +219,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", type=str, required=True)
     parser.add_argument("--data", "-d", type=str, required=True)
-    parser.add_argument("--output", "-o", type=str, required=True)
+    parser.add_argument("--output", "-o", type=str, default="output")
     args = parser.parse_args()
     cfg = parse_cfg(args)
 

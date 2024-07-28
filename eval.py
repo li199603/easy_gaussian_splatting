@@ -76,6 +76,7 @@ def eval(training_output_path: str):
         cfg.data,
         cfg.data_format,
         cfg.output,
+        cfg.white_background,
         cfg.num_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
@@ -105,8 +106,8 @@ def eval(training_output_path: str):
     gaussian_model: gaussian.GaussianModel = torch.load(
         checkpoint_path, map_location="cpu"
     )
-    evaluator = Evaluator(cfg.eval_render_num)
     gaussian_model = gaussian_model.eval().cuda()
+    evaluator = Evaluator(cfg.eval_render_num)
     for set_name, dataloder in zip(
         ["train set", "eval set"], [train_dataloader, eval_dataloader]
     ):

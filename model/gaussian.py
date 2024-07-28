@@ -34,7 +34,7 @@ class GaussianModel(nn.Module):
         dists = k_nearest_neighbors_dists(pc.xyzs, k=3)
         avg_dist = np.mean(dists, axis=1, keepdims=True)
         avg_dist = np.repeat(avg_dist, repeats=3, axis=1)
-        scales = torch.tensor(avg_dist, dtype=torch.float32)
+        scales = torch.tensor(avg_dist, dtype=torch.float32) / 2.0
         log_scales = torch.log(scales)
         self.log_scales = nn.Parameter(log_scales)  # [N, 3]
         quats = torch.zeros((pc.nbr_points, 4), dtype=torch.float32)
@@ -72,7 +72,7 @@ class GaussianModel(nn.Module):
         self.DENSIFY_GRAD_THRESH = densify_grad_thresh
         self.DENSIFY_SCALE_THRESH = densify_scale_thresh
         self.NUM_SPLITS = num_splits
-        self.PRUNE_RADII_THRESH = prune_radii_ratio_thresh
+        self.PRUNE_RADII_RATIO_THRESH = prune_radii_ratio_thresh
         self.PRUNE_SCALE_THRESH = prune_scale_thresh
         self.MIN_OPACITY = min_opacity
         self.USE_SCALE_REGULARIZATION = use_scale_regularization
@@ -104,7 +104,7 @@ class GaussianModel(nn.Module):
     def param_names(self) -> List[str]:
         return ["means", "log_scales", "quats", "sh_0", "sh_rest", "logit_opacities"]
 
-    def register_gs_optimizer(self, optimizer: torch.optim.Optimizer):
+    def register_optimizer(self, optimizer: torch.optim.Optimizer):
         if self.optimizer is not None:
             raise RuntimeError("optimizer has been registered")
         self.optimizer = optimizer
@@ -303,7 +303,7 @@ class GaussianModel(nn.Module):
         prune_mask = self.opacities < self.MIN_OPACITY
         prune_counts.append(prune_mask.sum().item())
         prune_mask = torch.logical_or(
-            prune_mask, self.max_radii > self.PRUNE_RADII_THRESH
+            prune_mask, self.max_radii > self.PRUNE_RADII_RATIO_THRESH
         )
         prune_counts.append(prune_mask.sum().item())
         prune_mask = torch.logical_or(
@@ -403,7 +403,7 @@ def build_optimizers(
         },
     ]
     optimizer = torch.optim.Adam(params)
-    model.register_gs_optimizer(optimizer)
+    model.register_optimizer(optimizer)
     return optimizer
 
 

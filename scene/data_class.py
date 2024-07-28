@@ -110,15 +110,16 @@ class Frame:
         w2c = torch.tensor(self.w2c, dtype=torch.float32)
 
         image = Image.open(self.image_path)
-        ih, iw = image.size
+        image_arr = np.array(image, dtype=np.float32) / 255.0
+        height, width = image_arr.shape[:2]
         if image.mode == "RGB":
-            image_tensor = torch.tensor(image, dtype=torch.float32) / 255.0
+            image_tensor = torch.tensor(image_arr, dtype=torch.float32)
         elif image.mode == "RGBA":
-            image_tensor = torch.tensor(image, dtype=torch.float32) / 255.0
-            background = (
-                torch.ones((ih, iw, 3), dtype=torch.float32)
-                if white_background
-                else torch.ones((ih, iw, 3), dtype=torch.float32)
+            image_tensor = torch.tensor(image_arr, dtype=torch.float32)
+            background = torch.full(
+                (height, width, 3),
+                fill_value=1.0 if white_background else 0.0,
+                dtype=torch.float32,
             )
             alpha = image_tensor[..., 3:4]
             image_tensor = image_tensor[..., :3] * alpha + background * (1 - alpha)
@@ -129,17 +130,18 @@ class Frame:
 
         if self.mask_path is not None:
             mask = Image.open(self.mask_path)
+            mask_arr = np.array(mask, dtype=np.float32) / 255.0
             if mask.mode != "1":
                 raise ValueError("only support mask on '1' mode")
-            mask_tensor = torch.tensor(mask, dtype=torch.float32) / 255.0
+            mask_tensor = torch.tensor(mask_arr, dtype=torch.float32)
             if mask_tensor.shape != image_tensor.shape[:2]:
                 raise ValueError(
-                    f"mask shape [{mask_tensor.shape[0]}, {mask_tensor.shape[1]}] is not equal to image shape [{ih}, {iw}]"
+                    f"mask size ({mask_tensor.shape}) is not equal to image size {image_tensor.shape}"
                 )
         else:
-            mask_tensor = torch.zeros((ih, iw), dtype=torch.float32)
+            mask_tensor = torch.zeros((height, width), dtype=torch.float32)
 
-        downscale_factor = get_downscale_factor(self.height, self.width, ih, iw)
+        downscale_factor = get_downscale_factor(self.height, self.width, height, width)
         fx = self.fx * downscale_factor
         fy = self.fy * downscale_factor
         cx = self.cx * downscale_factor
@@ -148,8 +150,8 @@ class Frame:
 
         data = {
             "K": K,  # [3, 3]
-            "height": ih,
-            "width": iw,
+            "height": height,
+            "width": width,
             "w2c": w2c,  # [4, 4]
             "image": image,  # [h, w, 3]
             "mask": mask,  # [h, w]

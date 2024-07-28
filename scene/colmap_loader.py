@@ -1,5 +1,5 @@
 from .data_class import Frame, Pointcloud
-from typing import Tuple, Dict, Any, BinaryIO, List
+from typing import Tuple, Dict, Any, BinaryIO, List, Literal, Sequence
 from pathlib import Path
 from loguru import logger
 import struct
@@ -11,10 +11,10 @@ class Camera:
     def __init__(
         self,
         id: int,
-        model_name: str,
+        model_name: Literal["SIMPLE_PINHOLE", "PINHOLE"],
         width: int,
         height: int,
-        params: Tuple[float, ...],
+        params: Sequence[float],
     ):
         self.id = id
         self.model_name = model_name
@@ -34,15 +34,14 @@ class Camera:
             raise ValueError(f"unsupported camera model: {model_name}")
 
     def __str__(self) -> str:
-        info = f"\
-            id: {self.id}, \
-            model_name: {self.model_name}, \
-            width: {self.width}, \
-            height: {self.height}, \
-            fx: {self.fx}, \
-            fy: {self.fy}, \
-            cx: {self.cx}, \
-            cy: {self.cy}"
+        info = f"id: {self.id},"
+        info += f" model_name: {self.model_name},"
+        info += f" width: {self.width},"
+        info += f" height: {self.height},"
+        info += f" fx: {self.fx},"
+        info += f" fy: {self.fy},"
+        info += f" cx: {self.cx},"
+        info += f" cy: {self.cy}"
         return info
 
 
@@ -52,23 +51,22 @@ class Image:
         id: int,
         image_file_name: str,
         camera_id: int,
-        rot: Tuple[float],
-        trans: Tuple[float],
+        quat: Sequence[float],
+        trans: Sequence[float],
     ):
         self.id = id
         self.image_file_name = image_file_name
         self.camera_id = camera_id
-        # rot and trans are for w2c
-        self.rot = rot  # wxyz
+        # quat and trans are for w2c
+        self.quat = quat  # wxyz
         self.trans = trans
 
     def __str__(self) -> str:
-        info = f"\
-            id: {self.id}, \
-            image_file_name: {self.image_file_name}, \
-            camera_id: {self.camera_id}, \
-            quat: {self.rot}, \
-            trans: {self.trans}"
+        info = f"id: {self.id},"
+        info += f" image_file_name: {self.image_file_name},"
+        info += f" camera_id: {self.camera_id},"
+        info += f" quat: {self.quat},"
+        info += f" trans: {self.trans}"
         return info
 
 
@@ -101,7 +99,7 @@ def load_intrinsics_binary(path: Path) -> Dict[int, Camera]:
             model_name = CAM_MAP[model_id][0]
             num_params = CAM_MAP[model_id][1]
             params = read_next_bytes(f, 8 * num_params, "d" * num_params)
-            camera_map[camera_id] = Camera(camera_id, model_name, width, height, params)
+            camera_map[camera_id] = Camera(camera_id, model_name, width, height, params)  # type: ignore
     assert len(set([cam.model_name for cam in camera_map.values()])) == 1
     return camera_map
 
@@ -115,7 +113,7 @@ def load_extrinsics_binary(path: Path) -> Dict[int, Image]:
         for _ in range(num_images):
             properties = read_next_bytes(f, 64, "idddddddi")
             image_id = properties[0]
-            rot = properties[1:5]  # wxyz
+            quat = properties[1:5]  # wxyz
             trans = properties[5:8]
             camera_id = properties[8]
             image_file_name = ""
@@ -128,7 +126,7 @@ def load_extrinsics_binary(path: Path) -> Dict[int, Image]:
             _ = read_next_bytes(f, 8, "Q")[0]
             _ = read_next_bytes(f, 24 * _, "ddq" * _)
             image_map[image_id] = Image(
-                image_id, image_file_name, camera_id, rot, trans
+                image_id, image_file_name, camera_id, quat, trans
             )
     return image_map
 
@@ -167,7 +165,7 @@ def load_colmap_data(path: str, use_masks: bool) -> Tuple[List[Frame], Pointclou
         image = image_map[image_id]
         camera = camera_map[image.camera_id]
         w2c = np.eye(4, dtype=np.float32)  # colmap/opencv (X right, Y down, Z forward)
-        w2c[:3, :3] = Quaternion(image.rot).rotation_matrix
+        w2c[:3, :3] = Quaternion(image.quat).rotation_matrix
         w2c[:3, 3] = np.array(image.trans, dtype=np.float32)
         image_path = Path(path) / "images" / image.image_file_name
         mask_path = (Path(path) / "masks" / image.image_file_name).with_suffix(".png")
