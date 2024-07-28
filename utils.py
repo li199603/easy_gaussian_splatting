@@ -2,6 +2,8 @@ import random
 import numpy as np
 import torch
 import sys
+from loguru import logger
+
 
 def set_global_state(seed: int, device: str):
     random.seed(seed)

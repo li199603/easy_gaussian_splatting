@@ -180,20 +180,9 @@ def parse_cfg(args) -> easydict.EasyDict:
         cfg["output"] = args.output
     cfg = easydict.EasyDict(cfg)
 
-    if cfg.num_iterations not in cfg.save_model_iterations:
-        logger.warning(
-            "num_iterations is not in save_model_iterations, append num_iterations to save_model_iterations"
-        )
-        cfg.save_model_iterations.append(cfg.num_iterations)
-
     project_name = Path(cfg.data).stem
     time_formatted = datetime.now().strftime(r"%m-%d_%H-%M-%S")
     cfg.output = str(Path(cfg.output) / project_name / time_formatted)
-    logger.info(f"output dir: {cfg.output}")
-    Path(cfg.output).mkdir(parents=True)
-    with open(Path(cfg.output) / "config.yaml", "w") as f:
-        yaml.dump(dict(cfg), f, sort_keys=False)
-
     return cfg
 
 
@@ -205,6 +194,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
     cfg = parse_cfg(args)
     set_global_state(cfg.random_seed, cfg.device)
+
+    if cfg.num_iterations not in cfg.save_model_iterations:
+        logger.warning(
+            "num_iterations is not in save_model_iterations, append num_iterations to save_model_iterations"
+        )
+        cfg.save_model_iterations.append(cfg.num_iterations)
+
+    logger.info(f"output dir: {cfg.output}")
+    Path(cfg.output).mkdir(parents=True)
+    with open(Path(cfg.output) / "config.yaml", "w") as f:
+        yaml.dump(dict(cfg), f, sort_keys=False)
 
     train(cfg)
     logger.info("training finished")

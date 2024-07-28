@@ -153,8 +153,8 @@ class Frame:
             "height": height,
             "width": width,
             "w2c": w2c,  # [4, 4]
-            "image": image,  # [h, w, 3]
-            "mask": mask,  # [h, w]
+            "image": image_tensor,  # [h, w, 3]
+            "mask": mask_tensor,  # [h, w]
         }
         return data
 
