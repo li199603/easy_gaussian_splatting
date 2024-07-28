@@ -1,6 +1,8 @@
 data_format: colmap
 white_background: false
 dataloader_workers: 2
+device: cuda:0
+random_seed: 0
 log_every: 200
 
 # true: the train dataset does not contain the eval dataset

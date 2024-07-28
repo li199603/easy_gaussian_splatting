@@ -89,6 +89,10 @@ class GaussianModel(nn.Module):
         self.cuda()
 
     @property
+    def nbr_gaussians(self) -> int:
+        return self.means.shape[0]
+
+    @property
     def scales(self) -> Tensor:
         return torch.exp(self.log_scales)
 
@@ -317,15 +321,14 @@ class GaussianModel(nn.Module):
             self._prune_in_model_and_optimizer(prune_mask)
 
         # reset statistics
-        num_gaussian = self.means.shape[0]
         self.grad_norm_accum = torch.zeros(
-            (num_gaussian,), dtype=torch.float32, device="cuda"
+            (self.nbr_gaussians,), dtype=torch.float32, device="cuda"
         )
         self.collecting_counts = torch.zeros(
-            (num_gaussian,), dtype=torch.float32, device="cuda"
+            (self.nbr_gaussians,), dtype=torch.float32, device="cuda"
         )
         self.max_radii = torch.zeros(
-            (num_gaussian,), dtype=torch.float32, device="cuda"
+            (self.nbr_gaussians,), dtype=torch.float32, device="cuda"
         )
         torch.cuda.empty_cache()
 
@@ -339,7 +342,7 @@ class GaussianModel(nn.Module):
                 "large_radii": prune_counts[1] - prune_counts[0],
                 "large_scale": prune_counts[2] - prune_counts[1],
             },
-            "train/num_gaussian": num_gaussian,
+            "train/nbr_gaussians": self.nbr_gaussians,
         }
         return tb_info
 

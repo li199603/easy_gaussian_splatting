@@ -2,9 +2,7 @@ import argparse
 import yaml
 import easydict  # type: ignore
 from pathlib import Path
-import sys
 from loguru import logger
-import random
 import numpy as np
 from datetime import datetime
 import torch
@@ -17,6 +15,7 @@ from eval import Evaluator
 from typing import Dict, Any
 import time
 from eval import eval
+from utils import set_global_state
 
 
 def train(cfg: easydict.EasyDict):
@@ -114,7 +113,7 @@ def train(cfg: easydict.EasyDict):
                 for key, value in metrics_dict.items():
                     if "render" in key:
                         all_tb_info[f"render/{key}"] = value
-                    if key in ["psnr", "ssim", "lpips"]:
+                    if key in ["psnr", "ssim", "lpips", "fps"]:
                         all_tb_info[f"eval/{key}"] = value
                 gaussian_model.train()
             # refine
@@ -151,22 +150,6 @@ def train(cfg: easydict.EasyDict):
     progress_bar.update(progress_bar.total - progress_bar.n)
     progress_bar.close()
     tb_writer.close()
-
-
-def set_global_state(seed: int, device: str):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.set_device(device)
-
-    fmt = "<green>{time:MMDD-HH:mm:ss.SSSSSS}</green> | <level>{level:5}</level> | <level>{message}</level>"
-    level = "DEBUG"
-    log_config = {
-        "handlers": [
-            {"sink": sys.stdout, "format": fmt, "level": level, "enqueue": True}
-        ]
-    }
-    logger.configure(**log_config)  # type: ignore
 
 
 def tb_report(tb_writer: SummaryWriter, step: int, tb_info: Dict[str, Any]):
@@ -215,14 +198,15 @@ def parse_cfg(args) -> easydict.EasyDict:
 
 
 if __name__ == "__main__":
-    set_global_state(seed=0, device="cuda:0")
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", type=str, required=True)
     parser.add_argument("--data", "-d", type=str, required=True)
     parser.add_argument("--output", "-o", type=str, default="output")
     args = parser.parse_args()
     cfg = parse_cfg(args)
+    set_global_state(cfg.random_seed, cfg.device)
 
     train(cfg)
     logger.info("training finished")
+    logger.info("--------------------- evaluation ---------------------")
     eval(cfg.output)

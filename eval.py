@@ -15,6 +15,8 @@ import yaml
 import easydict  # type: ignore
 from model import gaussian
 from loguru import logger
+from utils import set_global_state
+import time
 
 
 class Evaluator:
@@ -30,10 +32,15 @@ class Evaluator:
         render_indexes = list(range(len(dataloader)))
         if len(render_indexes) > self.eval_render_num:
             render_indexes = random.sample(render_indexes, k=self.eval_render_num)
+
         render_count = 0
+        cost = 0.0
         for i, data in enumerate(dataloader):
             data_to_device(data)
+            t0 = time.time()
             model_output = model(data)
+            t1 = time.time()
+            cost += t1 - t0
 
             gt_img: Tensor = data["image"]
             mask: Tensor = data["mask"]
@@ -60,6 +67,7 @@ class Evaluator:
         metrics_dict["psnr"] /= len(dataloader)
         metrics_dict["ssim"] /= len(dataloader)
         metrics_dict["lpips"] /= len(dataloader)
+        metrics_dict["fps"] = len(dataloader) / cost
 
         torch.cuda.empty_cache()
         return metrics_dict
@@ -69,6 +77,8 @@ def eval(training_output_path: str):
     with open(Path(training_output_path) / "config.yaml", "r") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     cfg = easydict.EasyDict(cfg)
+    set_global_state(cfg.random_seed, cfg.device)
+
     cfg.output = None
     cfg.eval_render_num = 0
 
@@ -82,6 +92,7 @@ def eval(training_output_path: str):
         cfg.eval_split_ratio,
         cfg.use_masks,
     )
+    scene.train_indexes = list(set(scene.train_indexes))
     train_dataloader = DataLoader(
         scene.train_dataset,
         batch_size=1,
@@ -106,6 +117,7 @@ def eval(training_output_path: str):
     gaussian_model: gaussian.GaussianModel = torch.load(
         checkpoint_path, map_location="cpu"
     )
+    logger.info(f"nbr_gaussians: {gaussian_model.nbr_gaussians}")
     gaussian_model = gaussian_model.eval().cuda()
     evaluator = Evaluator(cfg.eval_render_num)
     for set_name, dataloder in zip(
@@ -115,8 +127,9 @@ def eval(training_output_path: str):
         psnr = metrics_dict["psnr"]
         ssim = metrics_dict["ssim"]
         lpips = metrics_dict["lpips"]
+        fps = metrics_dict["fps"]
         logger.info(
-            f"evaluation in {set_name}: psnr={psnr:6.3f}, ssim={ssim:6.3f}, lpips={lpips:6.3f}"
+            f"evaluation in {set_name:10s}: psnr={psnr:6.3f}, ssim={ssim:6.3f}, lpips={lpips:6.3f}, fps={fps:6.3f}"
         )
 
 
