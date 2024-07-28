@@ -79,11 +79,13 @@ class GaussianModel(nn.Module):
         self.MAX_SCALE_RATIO = torch.tensor(
             max_scale_ratio, dtype=torch.float32, device="cuda"
         )
-        self.background = torch.full(
-            (3,),
-            fill_value=1.0 if white_background else 0.0,
-            dtype=torch.float32,
-            device="cuda",
+        self.BACKGROUND = nn.Parameter(
+            torch.full(
+                (3,),
+                fill_value=1.0 if white_background else 0.0,
+                dtype=torch.float32,
+            ),
+            requires_grad=False,
         )
 
         self.cuda()
@@ -359,7 +361,7 @@ class GaussianModel(nn.Module):
             Ks=data["K"][None],
             width=data["width"],
             height=data["height"],
-            backgrounds=self.background[None],
+            backgrounds=self.BACKGROUND[None],
             absgrad=True,
             packed=False,
         )
