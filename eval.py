@@ -129,7 +129,7 @@ def eval(training_output_path: str):
         lpips = metrics_dict["lpips"]
         fps = metrics_dict["fps"]
         logger.info(
-            f"evaluation in {set_name:10s}: psnr={psnr:6.3f}, ssim={ssim:6.3f}, lpips={lpips:6.3f}, fps={fps:6.3f}"
+            f"evaluation in {set_name:>10s}: psnr={psnr:6.3f}, ssim={ssim:6.3f}, lpips={lpips:6.3f}, fps={fps:6.3f}"
         )
 
 

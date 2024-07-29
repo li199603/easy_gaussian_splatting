@@ -58,7 +58,7 @@ class Frame:
         self.fy = fy
         self.cx = cx
         self.cy = cy
-        self.w2c = w2c
+        self.w2c = w2c  # colmap/opencv (X right, Y down, Z forward)
 
     def to_json(self, id: int):
         c2w = np.linalg.inv(self.w2c)
