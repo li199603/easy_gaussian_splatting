@@ -3,7 +3,7 @@ from viser.transforms import SE3, SO3
 from typing import Callable, Dict, List, Literal, Tuple
 import numpy as np
 import threading
-from .utils import CameraState, focal2fov, fov2focal, radians_norm
+from .utils import CameraState, fov2focal, radians_norm
 
 ActionType = Literal["static", "move", "update"]
 RenderPolicyType = Literal["none", "normal"]
@@ -77,7 +77,22 @@ class ViewerRuntime(threading.Thread):
             if self.render_policy == "none":
                 continue
             image = self.render_func(task.camera_state)
+            image = self.adjust_image_aspect(image, self.client.camera.aspect)
             self.client.scene.set_background_image(image)
+
+    def adjust_image_aspect(self, image: np.ndarray, aspect: float) -> np.ndarray:
+        h, w = image.shape[:2]
+        if w / h < aspect:
+            new_h = h
+            new_w = int(h * aspect)
+        elif w / h > aspect:
+            new_h = int(w / aspect)
+            new_w = w
+        else:
+            new_h, new_w = h, w
+        new_image = np.zeros((new_h, new_w, 3), dtype=np.float32)
+        new_image[:h, :w] = image
+        return new_image
 
     def stop(self):
         self.running = False

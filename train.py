@@ -102,7 +102,7 @@ def train(cfg: easydict.EasyDict):
             # save model
             if step in cfg.save_model_iterations:
                 model_save_path = (
-                    Path(cfg.output) / "checkpoints" / f"iteration_{step}.pth"
+                    Path(cfg.output) / "checkpoints" / f"iterations_{step}.pth"
                 )
                 model_save_path.parent.mkdir(exist_ok=True)
                 torch.save(gaussian_model, model_save_path)
