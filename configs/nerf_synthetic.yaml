@@ -1,5 +1,5 @@
-data_format: colmap  # colmap or blender
-white_background: false
+data_format: blender  # colmap or blender
+white_background: true
 dataloader_workers: 2
 device: cuda:0
 random_seed: 0
@@ -9,7 +9,7 @@ log_every: 200
 # false: all the data is used for training
 eval: true
 eval_split_ratio: 0.125  # only used when data_format is colmap
-eval_in_val: false  # only used when data_format is blender
+eval_in_val: true  # only used when data_format is blender
 eval_in_test: false  # only used when data_format is blender
 eval_every: 2000
 eval_render_num: 3

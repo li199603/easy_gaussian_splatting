@@ -5,6 +5,7 @@ from loguru import logger
 import struct
 import numpy as np
 from pyquaternion import Quaternion  # type: ignore
+import random
 
 
 class Camera:
@@ -151,7 +152,9 @@ def load_pointcloud(path: Path) -> Pointcloud:
         return Pointcloud(xyzs, rgbs)
 
 
-def load_colmap_data(path: str, use_masks: bool) -> Tuple[List[Frame], Pointcloud]:
+def load_colmap_data(
+    path: str, use_masks: bool, eval: bool, eval_split_ratio: float
+) -> Tuple[List[Frame], Pointcloud, List[int], List[int]]:
     intrinsics_path = Path(path) / "sparse" / "0" / "cameras.bin"
     extrinsics_path = Path(path) / "sparse" / "0" / "images.bin"
     pointcloud_path = Path(path) / "sparse" / "0" / "points3D.bin"
@@ -185,10 +188,17 @@ def load_colmap_data(path: str, use_masks: bool) -> Tuple[List[Frame], Pointclou
         if frames[-1].mask_path is not None:
             mask_count += 1
     frames.sort(key=lambda frame: frame.image_path)
-
     msg = f"colmap data: {len(camera_map)} cameras, {len(image_map)} images, {pc.nbr_points} points"
     if use_masks:
         msg += f", {mask_count} masks"
     logger.info(msg)
 
-    return frames, pc
+    num_frames = len(frames)
+    indexes = list(range(num_frames))
+    random.shuffle(indexes)
+    split_point = int(num_frames * eval_split_ratio)
+    eval_indexes = indexes[:split_point]
+    train_indexes = indexes[split_point:] if eval else indexes
+    if len(eval_indexes) == 0:
+        logger.warning("no data for evaluation")
+    return frames, pc, train_indexes, eval_indexes

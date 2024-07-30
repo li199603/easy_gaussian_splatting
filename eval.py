@@ -36,7 +36,7 @@ class Evaluator:
         render_count = 0
         cost = 0.0
         for i, data in enumerate(dataloader):
-            data_to_device(data)
+            data_to_device(data, non_blocking=False)
             t0 = time.time()
             model_output = model(data)
             t1 = time.time()
@@ -90,6 +90,8 @@ def eval(training_output_path: str):
         cfg.num_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
+        cfg.eval_in_val,
+        cfg.eval_in_test,
         cfg.use_masks,
     )
     scene.train_indexes = list(set(scene.train_indexes))
@@ -123,6 +125,9 @@ def eval(training_output_path: str):
     for set_name, dataloder in zip(
         ["train set", "eval set"], [train_dataloader, eval_dataloader]
     ):
+        if len(dataloder) == 0:
+            logger.info(f"{set_name} is empty, skip evaluation")
+            continue
         metrics_dict = evaluator(dataloder, gaussian_model)
         psnr = metrics_dict["psnr"]
         ssim = metrics_dict["ssim"]

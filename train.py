@@ -27,6 +27,8 @@ def train(cfg: easydict.EasyDict):
         cfg.num_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
+        cfg.eval_in_val,
+        cfg.eval_in_test,
         cfg.use_masks,
     )
     train_dataloader = DataLoader(
@@ -107,7 +109,7 @@ def train(cfg: easydict.EasyDict):
                 model_save_path.parent.mkdir(exist_ok=True)
                 torch.save(gaussian_model, model_save_path)
             # evaluation
-            if step == 1 or step % cfg.eval_every == 0:
+            if len(eval_dataloader) != 0 and (step == 1 or step % cfg.eval_every == 0):
                 gaussian_model.eval()
                 metrics_dict = evaluator(eval_dataloader, gaussian_model)
                 for key, value in metrics_dict.items():

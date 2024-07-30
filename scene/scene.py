@@ -7,17 +7,6 @@ from pathlib import Path
 import json
 
 
-def get_dataset_indexes(
-    num: int, eval: bool, eval_split_ratio: float
-) -> Tuple[List[int], List[int]]:
-    indexes = list(range(num))
-    random.shuffle(indexes)
-    split_point = int(num * eval_split_ratio)
-    eval_indexes = indexes[:split_point]
-    train_indexes = indexes[split_point:] if eval else indexes
-    return train_indexes, eval_indexes
-
-
 class SceneDataset(Dataset):
     def __init__(self, scene: "Scene", split: Literal["train", "eval"]):
         super().__init__()
@@ -41,18 +30,20 @@ class Scene:
         num_iterations: int,
         eval: bool,
         eval_split_ratio: float,
+        eval_in_val: bool,
+        eval_in_test: bool,
         use_masks: bool,
     ):
         self.white_background = white_background
         if data_format == "colmap":
-            self.frames, self.pc = load_colmap_data(data_path, use_masks)
+            colmap_data = load_colmap_data(data_path, use_masks, eval, eval_split_ratio)
+            self.frames, self.pc, self.train_indexes, self.eval_indexes = colmap_data
         elif data_format == "blender":
-            self.frames, self.pc = load_blender_data(data_path, use_masks)
+            blender_data = load_blender_data(data_path, use_masks, eval, eval_in_val, eval_in_test)
+            self.frames, self.pc, self.train_indexes, self.eval_indexes = blender_data
         else:
             raise ValueError(f"Invalid data_format: {data_format}")
-        self.train_indexes, self.eval_indexes = get_dataset_indexes(
-            len(self.frames), eval, eval_split_ratio
-        )
+
         if num_iterations < len(self.train_indexes):
             raise ValueError(
                 "the number of iterations is less than the number of training data"

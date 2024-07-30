@@ -8,7 +8,7 @@ import torch
 class Pointcloud:
     def __init__(self, xyzs: np.ndarray, rgbs: np.ndarray):
         self.xyzs = xyzs  # [N, 3]
-        self.rgbs = rgbs  # [N, 3]
+        self.rgbs = rgbs  # [N, 3]  uint8
 
     @property
     def nbr_points(self) -> int:
@@ -174,8 +174,8 @@ def get_downscale_factor(
     return downscale_factor
 
 
-def data_to_device(data: Dict[str, Any]):
-    data["K"] = data["K"].cuda(non_blocking=True)
-    data["w2c"] = data["w2c"].cuda(non_blocking=True)
-    data["image"] = data["image"].cuda(non_blocking=True)
-    data["mask"] = data["mask"].cuda(non_blocking=True)
+def data_to_device(data: Dict[str, Any], non_blocking: bool = True):
+    data["K"] = data["K"].cuda(non_blocking=non_blocking)
+    data["w2c"] = data["w2c"].cuda(non_blocking=non_blocking)
+    data["image"] = data["image"].cuda(non_blocking=non_blocking)
+    data["mask"] = data["mask"].cuda(non_blocking=non_blocking)
