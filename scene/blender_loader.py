@@ -5,6 +5,7 @@ import json
 from PIL import Image
 import numpy as np
 from loguru import logger
+from .utils import focal2fov, fov2focal
 
 
 def load_frames(path: Path, use_masks: bool, suffix: str = ".png") -> List[Frame]:
@@ -13,7 +14,7 @@ def load_frames(path: Path, use_masks: bool, suffix: str = ".png") -> List[Frame
     frames: List[Frame] = []
     with open(path, "r") as f:
         content = json.load(f)
-        fx = fy = content["camera_angle_x"]
+        fx = content["camera_angle_x"]
         for frame_json in content["frames"]:
             file_name = frame_json["file_path"] + suffix  # type: str
             image_path = path.parent / file_name
@@ -21,6 +22,7 @@ def load_frames(path: Path, use_masks: bool, suffix: str = ".png") -> List[Frame
             mask_path = mask_dir / image_path.name
             image = Image.open(image_path)
             width, height = image.size
+            fy = focal2fov(fov2focal(fx, width), height)
             cx, cy = width / 2.0, height / 2.0
             # in nerf_synthetic, the camera's coordinate system is blender/opengl (X right, Y up, Z back)
             # need to convert to colmap/opencv (X right, Y down, Z forward)
