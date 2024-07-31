@@ -152,9 +152,7 @@ if __name__ == "__main__":
     logger.configure(**log_config)  # type: ignore
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", type=str, required=True)
-    parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--path", "-p", type=str, required=True)
     args = parser.parse_args()
 
-    torch.cuda.set_device(args.device)
     eval(args.path)

@@ -57,7 +57,7 @@ def waiting_exit():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", type=str, required=True)
+    parser.add_argument("--path", "-p", type=str, required=True)
     args = parser.parse_args()
 
     path = Path(args.path)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
             "height": camera_state.height,
             "width": camera_state.width,
         }
-        return gaussian_model(data)["pred_img"].cpu().numpy()
+        return gaussian_model(data)["render_img"].cpu().numpy()
 
     viewer = Viewer(gs_render_func, camera_states)
     waiting_exit()
