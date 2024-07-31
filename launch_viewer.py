@@ -7,6 +7,8 @@ from typing import Optional
 from viewer import Viewer, CameraState
 import numpy as np
 import time
+from utils import load_camera_states
+
 
 def load_gaussian_model(
     path: Path, iterations: Optional[int] = None
@@ -28,25 +30,6 @@ def load_gaussian_model(
     return gaussian_model
 
 
-def load_camera_states(path: Path) -> list[CameraState]:
-    camera_states = []
-    with open(path / "cameras.json", "r") as f:
-        for cam in json.load(f):
-            c2w = np.eye(4)
-            c2w[:3, :3] = np.array(cam["rotation"])
-            c2w[:3, 3] = np.array(cam["position"])
-            w2c = np.linalg.inv(c2w)
-            K = np.array(
-                [
-                    [cam["fx"], 0, cam["width"] / 2],
-                    [0, cam["fy"], cam["height"] / 2],
-                    [0, 0, 1],
-                ],
-                dtype=np.float32,
-            )
-            camera_states.append(CameraState(w2c, K, cam["width"], cam["height"]))
-    return camera_states
-
 def waiting_exit():
     print("viewer is running, press Ctrl+C to exit")
     try:
@@ -54,6 +37,7 @@ def waiting_exit():
             time.sleep(3600)
     except KeyboardInterrupt:
         pass
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -76,4 +60,3 @@ if __name__ == "__main__":
 
     viewer = Viewer(gs_render_func, camera_states)
     waiting_exit()
-

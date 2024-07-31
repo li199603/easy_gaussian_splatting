@@ -15,7 +15,8 @@ from eval import Evaluator
 from typing import Dict, Any
 import time
 from eval import eval
-from utils import set_global_state
+from utils import set_global_state, load_camera_states
+from viewer import Viewer, CameraState
 
 
 def train(cfg: easydict.EasyDict):
@@ -77,11 +78,13 @@ def train(cfg: easydict.EasyDict):
         gaussian_model, cfg.lambda_ssim, cfg.lambda_scale
     )
     evaluator = Evaluator(cfg.eval_render_num)
+    viewer = construct_viewer(gaussian_model, Path(cfg.output)) if cfg.view_online else None
+    tb_writer = SummaryWriter(Path(cfg.output) / "tensorboard")
+    logger.info(f"tensorboard log path: {tb_writer.log_dir}")
 
     progress_bar = tqdm.tqdm(
         total=cfg.num_iterations, ncols=120, postfix={"loss": float("inf")}
     )
-    tb_writer = SummaryWriter(Path(cfg.output) / "tensorboard")
     step = 0
     for data in train_dataloader:
         step += 1
@@ -149,9 +152,34 @@ def train(cfg: easydict.EasyDict):
         optimizer.step()
         optimizer.zero_grad()
 
+        if viewer is not None:
+            viewer.update_render_image()
+
     progress_bar.update(progress_bar.total - progress_bar.n)
     progress_bar.close()
     tb_writer.close()
+
+
+def construct_viewer(
+    gaussian_model: gaussian.GaussianModel, cameras_json_path: Path
+) -> Viewer:
+    camera_states = load_camera_states(cameras_json_path)
+
+    @torch.no_grad()
+    def gs_render_func(camera_state: CameraState) -> np.ndarray:
+        gaussian_model.eval()
+        data = {
+            "w2c": torch.tensor(camera_state.w2c, dtype=torch.float32, device="cuda"),
+            "K": torch.tensor(camera_state.K, dtype=torch.float32, device="cuda"),
+            "height": camera_state.height,
+            "width": camera_state.width,
+        }
+        image = gaussian_model(data)["render_img"].cpu().numpy()
+        gaussian_model.train()
+        return image
+
+    viewer = Viewer(gs_render_func, camera_states, in_training_mode=True)
+    return viewer
 
 
 def tb_report(tb_writer: SummaryWriter, step: int, tb_info: Dict[str, Any]):
@@ -180,6 +208,7 @@ def parse_cfg(args) -> easydict.EasyDict:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
         cfg["data"] = args.data
         cfg["output"] = args.output
+        cfg["view_online"] = args.view_online
     cfg = easydict.EasyDict(cfg)
 
     project_name = Path(cfg.data).stem
@@ -193,6 +222,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", "-c", type=str, required=True)
     parser.add_argument("--data", "-d", type=str, required=True)
     parser.add_argument("--output", "-o", type=str, default="output")
+    parser.add_argument("--view_online", action="store_true")
     args = parser.parse_args()
     cfg = parse_cfg(args)
     set_global_state(cfg.random_seed, cfg.device)

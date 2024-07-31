@@ -4,6 +4,7 @@ from typing import Callable, Dict, List, Literal, Tuple
 import numpy as np
 import threading
 from .utils import CameraState, fov2focal, radians_norm
+import time
 
 ActionType = Literal["static", "move", "update"]
 RenderPolicyType = Literal["none", "normal"]
@@ -21,13 +22,19 @@ class ViewerRuntime(threading.Thread):
         render_func: Callable[[CameraState], np.ndarray],
         client: viser.ClientHandle,
         target_camera_states: List[CameraState],
+        in_training_mode: bool,
         default_fov: float = np.pi / 2,
         default_hw: Tuple[int, int] = (1080, 1920),
+        static_time: float = 0.2,
+        update_time: float = 1.0,
     ) -> None:
         super().__init__()
         self.render_func = render_func
         self.client = client
         self.target_camera_states = target_camera_states
+        self.in_training_mode = in_training_mode
+        self.static_time = static_time
+        self.update_time = update_time
         self.running = False
 
         self.tasks: List[RenderTask] = []
@@ -61,14 +68,21 @@ class ViewerRuntime(threading.Thread):
 
     def run(self):
         self.running = True
+        elapsed_time = 0.0
         while self.running:
+            t0 = time.time()
             with self.tasks_cond:
-                self.tasks_cond.wait(0.2)
+                self.tasks_cond.wait(self.static_time)
                 if not self.running:
                     break
                 if len(self.tasks) == 0:
                     self.tasks.append(
                         RenderTask(self._get_camera_state(self.client.camera), "static")
+                    )
+                if self.in_training_mode and elapsed_time > self.update_time:
+                    elapsed_time = 0.0
+                    self.tasks.append(
+                        RenderTask(self._get_camera_state(self.client.camera), "update")
                     )
                 while len(self.tasks) != 0:
                     task = self.tasks.pop(0)
@@ -79,6 +93,8 @@ class ViewerRuntime(threading.Thread):
             image = self.render_func(task.camera_state)
             image = self.adjust_image_aspect(image, self.client.camera.aspect)
             self.client.scene.set_background_image(image)
+            t1 = time.time()
+            elapsed_time += t1 - t0
 
     def adjust_image_aspect(self, image: np.ndarray, aspect: float) -> np.ndarray:
         h, w = image.shape[:2]

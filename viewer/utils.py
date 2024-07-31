@@ -1,6 +1,7 @@
 from viser.transforms import SE3
-from typing import Tuple
+from typing import Tuple, Callable, List
 import numpy as np
+import threading
 
 
 def fov2focal(fov: float, pixels: float) -> float:
@@ -36,3 +37,25 @@ class CameraState:
         other_c2w = np.linalg.inv(other.w2c)
         dist = np.linalg.norm(self_c2w[:3, 3] - other_c2w[:3, 3], ord=2)
         return float(dist)
+
+
+class DelayRender:
+    def __init__(self, render_func: Callable[[CameraState], np.ndarray]) -> None:
+        self.camera_states: List[CameraState] = []
+        self.lock = threading.Lock()
+        self.render_img = np.ones((1080, 1920, 3), np.float32)
+        self.render_func = render_func
+
+    def get_render_image(self, camera_state: CameraState) -> np.ndarray:
+        with self.lock:
+            self.camera_states.append(camera_state)
+        return self.render_img
+
+    def update_render_image(self):
+        camera_state = None
+        with self.lock:
+            if len(self.camera_states) != 0:
+                camera_state = self.camera_states[-1]
+                self.camera_states.clear()
+        if camera_state is not None:
+            self.render_img = self.render_func(camera_state)
