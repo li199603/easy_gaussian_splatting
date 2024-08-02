@@ -9,4 +9,5 @@ plyfile
 pyquaternion
 pillow
 viser
+imageio[ffmpeg]
 torchmetrics[image]

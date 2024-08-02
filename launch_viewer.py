@@ -2,7 +2,6 @@ from model import gaussian
 import argparse
 import torch
 from pathlib import Path
-import json
 from typing import Optional
 from viewer import Viewer, CameraState
 import numpy as np

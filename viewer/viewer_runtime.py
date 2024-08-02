@@ -3,8 +3,9 @@ from viser.transforms import SE3, SO3
 from typing import Callable, Dict, List, Literal, Tuple
 import numpy as np
 import threading
-from .utils import CameraState, fov2focal, radians_norm
+from .utils import CameraState, fov2focal, radians_norm, RecordManager
 import time
+from pathlib import Path
 
 ActionType = Literal["static", "move", "update"]
 RenderPolicyType = Literal["none", "normal"]
@@ -41,6 +42,9 @@ class ViewerRuntime(threading.Thread):
         self.tasks_lock = threading.Lock()
         self.tasks_cond = threading.Condition(self.tasks_lock)
         self.render_policy: RenderPolicyType = "normal"
+        self.record_manager = RecordManager(
+            self.render_func, duration=5, fps=30, output_dir=Path("output")
+        )
 
         # these member could be modified through the gui
         self.fov_x, self.fov_y = default_fov, default_fov
@@ -282,14 +286,15 @@ class ViewerRuntime(threading.Thread):
         def _(_):
             self._camera_rotation("yaw-")
 
-        if len(self.target_camera_states) == 0:
-            return
-        with self.client.gui.add_folder("Target Cameras"):
+        with self.client.gui.add_folder(
+            "Target Cameras", visible=len(self.target_camera_states) != 0
+        ):
             gui_number_camera_index = self.client.gui.add_number(
                 "camera index",
                 initial_value=1,
                 min=1,
                 max=len(self.target_camera_states),
+                step=1,
             )
             gui_button_skip_to_closest = self.client.gui.add_button("skip to closest")
 
@@ -319,3 +324,80 @@ class ViewerRuntime(threading.Thread):
             gui_number_fov_y.value = fov_y / np.pi * 180
             gui_number_camera_index.value = closest_index + 1
             self._skip_to_target_camera(target_camera_state)
+
+        with self.client.gui.add_folder(
+            "Export Video", visible=not self.in_training_mode, expand_by_default=False
+        ):
+            gui_number_camera_index = self.client.gui.add_number(
+                "camera index",
+                initial_value=0,
+                min=0,
+                step=1,
+            )
+            gui_button_add_camera = self.client.gui.add_button("add camera")
+            gui_button_clear_camera = self.client.gui.add_button("clear cameras")
+            gui_number_record_duration = self.client.gui.add_number(
+                "record duration",
+                initial_value=self.record_manager.duration,
+                min=1,
+                max=60,
+                step=0.1,
+            )
+            gui_number_record_fps = self.client.gui.add_number(
+                "record fps",
+                initial_value=self.record_manager.fps,
+                min=1,
+                max=60,
+                step=1,
+            )
+            gui_button_export = self.client.gui.add_button("export")
+
+        @gui_number_camera_index.on_update
+        def _(_):
+            if gui_number_camera_index.value == 0:
+                return
+            if len(self.record_manager.camera_states) == 0:
+                return
+            index = min(
+                max(gui_number_camera_index.value, 1),
+                len(self.record_manager.camera_states),
+            )
+            if not (
+                1
+                <= gui_number_camera_index.value
+                <= len(self.record_manager.camera_states)
+            ):
+                gui_number_camera_index.value = index
+                return
+            
+            target_camera_state = self.record_manager.camera_states[index - 1]
+            gui_number_height.value = target_camera_state.height
+            gui_number_width.value = target_camera_state.width
+            fox_x, fov_y = target_camera_state.fov()
+            gui_number_fov_x.value = fox_x / np.pi * 180
+            gui_number_fov_y.value = fov_y / np.pi * 180
+            self._skip_to_target_camera(target_camera_state)
+
+        @gui_button_add_camera.on_click
+        def _(_):
+            self.record_manager.camera_states.append(
+                self._get_camera_state(self.client.camera)
+            )
+
+        @gui_button_clear_camera.on_click
+        def _(_):
+            self.record_manager.camera_states.clear()
+
+        @gui_number_record_duration.on_update
+        def _(_):
+            self.record_manager.duration = min(
+                max(gui_number_record_duration.value, 1), 60
+            )
+
+        @gui_number_record_fps.on_update
+        def _(_):
+            self.record_manager.fps = min(max(gui_number_record_fps.value, 1), 60)
+
+        @gui_button_export.on_click
+        def _(_):
+            self.record_manager.export_video()
