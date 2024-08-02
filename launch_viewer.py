@@ -1,32 +1,10 @@
-from model import gaussian
 import argparse
 import torch
 from pathlib import Path
-from typing import Optional
 from viewer import Viewer, CameraState
 import numpy as np
 import time
-from utils import load_camera_states
-
-
-def load_gaussian_model(
-    path: Path, iterations: Optional[int] = None
-) -> gaussian.GaussianModel:
-    cpt_lst = sorted([cpt for cpt in (path / "checkpoints").glob("*.pth")])
-    if len(cpt_lst) == 0:
-        raise ValueError("no checkpoint found")
-    target_cpt = cpt_lst[-1]
-    if iterations is not None:
-        for cpt in cpt_lst:
-            if cpt.name == f"iterations_{iterations}.pth":
-                target_cpt = cpt
-                break
-        if target_cpt is None:
-            raise ValueError(f"cannot find checkpoint for iteration {iterations}")
-
-    gaussian_model: gaussian.GaussianModel = torch.load(target_cpt, map_location="cpu")
-    gaussian_model = gaussian_model.eval().cuda()
-    return gaussian_model
+from utils import load_camera_states, load_gaussian_model
 
 
 def waiting_exit():
@@ -41,10 +19,11 @@ def waiting_exit():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", "-p", type=str, required=True)
+    parser.add_argument("--iterations", "-i", type=int, default=None)
     args = parser.parse_args()
 
     path = Path(args.path)
-    gaussian_model = load_gaussian_model(path)
+    gaussian_model = load_gaussian_model(path, args.iterations).eval()
     camera_states = load_camera_states(path)
 
     @torch.no_grad()

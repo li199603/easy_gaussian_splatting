@@ -7,7 +7,7 @@ from torchmetrics.image import (
     StructuralSimilarityIndexMeasure,
     LearnedPerceptualImagePatchSimilarity,
 )
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import random
 from pathlib import Path
 from scene import Scene, data_to_device
@@ -15,7 +15,7 @@ import yaml
 import easydict  # type: ignore
 from model import gaussian
 from loguru import logger
-from utils import set_global_state
+from utils import set_global_state, load_gaussian_model
 import time
 
 
@@ -73,7 +73,7 @@ class Evaluator:
         return metrics_dict
 
 
-def eval(training_output_path: str):
+def eval(training_output_path: str, iterations: Optional[int]):
     with open(Path(training_output_path) / "config.yaml", "r") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     cfg = easydict.EasyDict(cfg)
@@ -109,18 +109,11 @@ def eval(training_output_path: str):
         num_workers=cfg.dataloader_workers,
         collate_fn=lambda x: x[0],
     )
-    checkpoint_path_lst = [
-        model_path for model_path in Path(training_output_path).rglob("*.pth")
-    ]
-    if len(checkpoint_path_lst) == 0:
-        raise FileNotFoundError("no checkpoint found")
-    checkpoint_path = sorted(checkpoint_path_lst)[-1]
-    logger.info(f"loading checkpoint from {checkpoint_path}")
-    gaussian_model: gaussian.GaussianModel = torch.load(
-        checkpoint_path, map_location="cpu"
-    )
+
+    gaussian_model: gaussian.GaussianModel = load_gaussian_model(
+        Path(training_output_path), iterations
+    ).eval()  # type: ignore
     logger.info(f"nbr_gaussians: {gaussian_model.nbr_gaussians}")
-    gaussian_model = gaussian_model.eval().cuda()
     evaluator = Evaluator(cfg.eval_render_num)
     for set_name, dataloder in zip(
         ["train set", "eval set"], [train_dataloader, eval_dataloader]
@@ -153,6 +146,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", "-p", type=str, required=True)
+    parser.add_argument("--iterations", "-i", type=int, default=None)
     args = parser.parse_args()
 
-    eval(args.path)
+    eval(args.path, args.iterations)
