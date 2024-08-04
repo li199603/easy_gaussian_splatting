@@ -25,7 +25,7 @@ def train(cfg: easydict.EasyDict):
         cfg.data_format,
         cfg.output,
         cfg.white_background,
-        cfg.num_iterations,
+        cfg.total_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
         cfg.eval_in_val,
@@ -86,7 +86,7 @@ def train(cfg: easydict.EasyDict):
         viewer = construct_viewer(gaussian_model, Path(cfg.output))
 
     progress_bar = tqdm.tqdm(
-        total=cfg.num_iterations, ncols=120, postfix={"loss": float("inf")}
+        total=cfg.total_iterations, ncols=120, postfix={"loss": float("inf")}
     )
     step = 0
     for data in train_dataloader:
@@ -230,11 +230,11 @@ if __name__ == "__main__":
     cfg = parse_cfg(args)
     set_global_state(cfg.random_seed, cfg.device)
 
-    if cfg.num_iterations not in cfg.save_model_iterations:
+    if cfg.total_iterations not in cfg.save_model_iterations:
         logger.warning(
-            "num_iterations is not in save_model_iterations, append num_iterations to save_model_iterations"
+            "total_iterations is not in save_model_iterations, append total_iterations to save_model_iterations"
         )
-        cfg.save_model_iterations.append(cfg.num_iterations)
+        cfg.save_model_iterations.append(cfg.total_iterations)
 
     logger.info(f"output dir: {cfg.output}")
     Path(cfg.output).mkdir(parents=True)
@@ -244,4 +244,5 @@ if __name__ == "__main__":
     train(cfg)
     logger.info("training finished")
     logger.info("--------------------- evaluation ---------------------")
-    eval(cfg.output)
+    for iteration in cfg.save_model_iterations:
+        eval(cfg.output, iteration)

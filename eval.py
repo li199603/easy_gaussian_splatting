@@ -92,7 +92,7 @@ def eval(training_output_path: str, iterations: Optional[int] = None):
         cfg.data_format,
         cfg.output,
         cfg.white_background,
-        cfg.num_iterations,
+        cfg.total_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
         cfg.eval_in_val,

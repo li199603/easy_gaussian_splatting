@@ -27,7 +27,7 @@ class Scene:
         data_format: Literal["colmap", "blender"],
         output_path: Optional[str],
         white_background: bool,
-        num_iterations: int,
+        total_iterations: int,
         eval: bool,
         eval_split_ratio: float,
         eval_in_val: bool,
@@ -44,12 +44,12 @@ class Scene:
         else:
             raise ValueError(f"Invalid data_format: {data_format}")
 
-        if num_iterations < len(self.train_indexes):
+        if total_iterations < len(self.train_indexes):
             raise ValueError(
                 "the number of iterations is less than the number of training data"
             )
-        self.train_indexes *= num_iterations // len(self.train_indexes) + 1
-        self.train_indexes = self.train_indexes[:num_iterations]
+        self.train_indexes *= total_iterations // len(self.train_indexes) + 1
+        self.train_indexes = self.train_indexes[:total_iterations]
         self.train_dataset = SceneDataset(self, "train")
         self.eval_dataset = SceneDataset(self, "eval")
 
