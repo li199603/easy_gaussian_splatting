@@ -30,7 +30,7 @@ class Viewer:
         self.runtime_map: Dict[int, ViewerRuntime] = {}
         self.delay_render_map: Dict[int, DelayRender] = {}
 
-        self.server = viser.ViserServer(host, port)
+        self.server = viser.ViserServer(host, port, verbose=False)
         self.server.on_client_connect(self._on_connect)
         self.server.on_client_disconnect(self._on_disconnect)
 

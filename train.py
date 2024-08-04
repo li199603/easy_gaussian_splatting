@@ -78,9 +78,12 @@ def train(cfg: easydict.EasyDict):
         gaussian_model, cfg.lambda_ssim, cfg.lambda_scale
     )
     evaluator = Evaluator(cfg.eval_render_num)
-    viewer = construct_viewer(gaussian_model, Path(cfg.output)) if cfg.view_online else None
-    tb_writer = SummaryWriter(Path(cfg.output) / "tensorboard")
-    logger.info(f"tensorboard log path: {tb_writer.log_dir}")
+    tb_path = Path(cfg.output) / "tensorboard"
+    logger.info(f"monitor training status: tensorboard --logdir {tb_path}")
+    tb_writer = SummaryWriter(tb_path)
+    viewer = None
+    if cfg.view_online:
+        viewer = construct_viewer(gaussian_model, Path(cfg.output))
 
     progress_bar = tqdm.tqdm(
         total=cfg.num_iterations, ncols=120, postfix={"loss": float("inf")}

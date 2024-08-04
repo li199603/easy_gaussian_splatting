@@ -49,19 +49,24 @@ def load_gaussian_model(
     path: Path, iterations: Optional[int] = None
 ) -> torch.nn.Module:
     cpt_lst = [cpt for cpt in (path / "checkpoints").glob("*.pth")]
-    if len(cpt_lst) == 0:
-        raise ValueError("no checkpoint found")
     if iterations is not None:
         target_cpt = None
         for cpt in cpt_lst:
-            if cpt.name == f"iterations_{iterations}.pth":
+            if cpt.stem == f"iterations_{iterations}":
                 target_cpt = cpt
                 break
         if target_cpt is None:
             raise ValueError(f"cannot find checkpoint for iteration {iterations}")
     else:
-        cpt_lst.sort()
-        target_cpt = cpt_lst[-1]
+        max_iterations = 0
+        target_cpt = None
+        for cpt in cpt_lst:
+            iterations = int(cpt.stem.split("_")[1])
+            if iterations > max_iterations:
+                max_iterations = iterations
+                target_cpt = cpt
+        if target_cpt is None:
+            raise ValueError("no checkpoint found")
 
     logger.info(f"load checkpoint from {target_cpt}")
     gaussian_model = torch.load(target_cpt, map_location="cpu").cuda()

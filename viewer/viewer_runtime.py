@@ -92,13 +92,13 @@ class ViewerRuntime(threading.Thread):
                     task = self.tasks.pop(0)
                     action_trans = self.state_machine[self.render_policy]
                     self.render_policy = action_trans[task.action]
+                t1 = time.time()
+                elapsed_time += t1 - t0
             if self.render_policy == "none":
                 continue
             image = self.render_func(task.camera_state)
             image = self.adjust_image_aspect(image, self.client.camera.aspect)
             self.client.scene.set_background_image(image)
-            t1 = time.time()
-            elapsed_time += t1 - t0
 
     def adjust_image_aspect(self, image: np.ndarray, aspect: float) -> np.ndarray:
         h, w = image.shape[:2]
@@ -147,27 +147,10 @@ class ViewerRuntime(threading.Thread):
     def get_closest_index(self, camera_state: CameraState) -> int:
         closest_index = 0
         min_dist = float("inf")
-        candidates = []
         for i in range(len(self.target_camera_states)):
             dist = camera_state.distance_to(self.target_camera_states[i])
             if dist < min_dist:
                 min_dist = dist
-                closest_index = i
-            if dist < 1:
-                candidates.append(i)
-        if len(candidates) <= 1:
-            return closest_index
-
-        closest_index = candidates[0]
-        min_rpy_err = float("inf")
-        cur_rpy = camera_state.roll_pitch_yaw()
-        for i in candidates:
-            rpy_err_arr = radians_norm(
-                cur_rpy - self.target_camera_states[i].roll_pitch_yaw()
-            )
-            rpy_err = float(np.linalg.norm(rpy_err_arr, ord=2))
-            if rpy_err < min_rpy_err:
-                min_rpy_err = rpy_err
                 closest_index = i
         return closest_index
 
@@ -202,10 +185,10 @@ class ViewerRuntime(threading.Thread):
     def _define_gui(self):
         with self.client.gui.add_folder("Camera Params"):
             gui_number_height = self.client.gui.add_number(
-                "height", initial_value=self.height, min=1, max=1920, step=1
+                "height", initial_value=self.height, min=1, step=1
             )
             gui_number_width = self.client.gui.add_number(
-                "width", initial_value=self.width, min=1, max=1920, step=1
+                "width", initial_value=self.width, min=1, step=1
             )
             gui_number_fov_x = self.client.gui.add_number(
                 "fov x", initial_value=self.fov_x / np.pi * 180, min=0, max=180, step=1
@@ -230,14 +213,14 @@ class ViewerRuntime(threading.Thread):
 
         @gui_number_height.on_update
         def _(_):
-            self.height = min(max(int(gui_number_height.value), 1), 1920)
+            self.height = max(int(gui_number_height.value), 1)
             self.submit_task(
                 RenderTask(self._get_camera_state(self.client.camera), "update")
             )
 
         @gui_number_width.on_update
         def _(_):
-            self.width = min(max(int(gui_number_width.value), 1), 1920)
+            self.width = max(int(gui_number_width.value), 1)
             self.submit_task(
                 RenderTask(self._get_camera_state(self.client.camera), "update")
             )
@@ -369,7 +352,7 @@ class ViewerRuntime(threading.Thread):
             ):
                 gui_number_camera_index.value = index
                 return
-            
+
             target_camera_state = self.record_manager.camera_states[index - 1]
             gui_number_height.value = target_camera_state.height
             gui_number_width.value = target_camera_state.width

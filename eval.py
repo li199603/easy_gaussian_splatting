@@ -73,7 +73,7 @@ class Evaluator:
         return metrics_dict
 
 
-def eval(training_output_path: str, iterations: Optional[int]):
+def eval(training_output_path: str, iterations: Optional[int] = None):
     with open(Path(training_output_path) / "config.yaml", "r") as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     cfg = easydict.EasyDict(cfg)
@@ -81,6 +81,11 @@ def eval(training_output_path: str, iterations: Optional[int]):
 
     cfg.output = None
     cfg.eval_render_num = 0
+
+    gaussian_model: gaussian.GaussianModel = load_gaussian_model(
+        Path(training_output_path), iterations
+    ).eval()  # type: ignore
+    logger.info(f"nbr_gaussians: {gaussian_model.nbr_gaussians}")
 
     scene = Scene(
         cfg.data,
@@ -109,12 +114,8 @@ def eval(training_output_path: str, iterations: Optional[int]):
         num_workers=cfg.dataloader_workers,
         collate_fn=lambda x: x[0],
     )
-
-    gaussian_model: gaussian.GaussianModel = load_gaussian_model(
-        Path(training_output_path), iterations
-    ).eval()  # type: ignore
-    logger.info(f"nbr_gaussians: {gaussian_model.nbr_gaussians}")
     evaluator = Evaluator(cfg.eval_render_num)
+
     for set_name, dataloder in zip(
         ["train set", "eval set"], [train_dataloader, eval_dataloader]
     ):
