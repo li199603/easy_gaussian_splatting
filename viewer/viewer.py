@@ -4,6 +4,7 @@ import numpy as np
 import threading
 from .utils import CameraState, DelayRender
 from .viewer_runtime import ViewerRuntime
+from pathlib import Path
 
 
 class Viewer:
@@ -14,6 +15,7 @@ class Viewer:
         host: str = "localhost",
         port: int = 9981,
         in_training_mode: bool = False,
+        video_output_dir: Path = Path("./output"),
     ) -> None:
         """
         render_func return a image array of shape (H, W, 3) with values ranging from 0 to 1
@@ -27,6 +29,8 @@ class Viewer:
         self.render_func = render_with_lock
         self.target_camera_states = target_camera_states
         self.in_training_mode = in_training_mode
+        self.video_output_dir = video_output_dir
+        self.video_output_dir.mkdir(parents=True, exist_ok=True)
         self.runtime_map: Dict[int, ViewerRuntime] = {}
         self.delay_render_map: Dict[int, DelayRender] = {}
 
@@ -42,7 +46,11 @@ class Viewer:
             render_func = delay_render.get_render_image
 
         runtime = ViewerRuntime(
-            render_func, client, self.target_camera_states, self.in_training_mode
+            render_func,
+            client,
+            self.target_camera_states,
+            self.in_training_mode,
+            self.video_output_dir,
         )
         runtime.start()
         self.runtime_map[client.client_id] = runtime

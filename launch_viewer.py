@@ -36,5 +36,5 @@ if __name__ == "__main__":
         }
         return gaussian_model(data)["render_img"].cpu().numpy()
 
-    viewer = Viewer(gs_render_func, camera_states)
+    viewer = Viewer(gs_render_func, camera_states, video_output_dir=path / "videos")
     waiting_exit()

@@ -78,7 +78,7 @@ def camera_interpolation(
     dist_arr = np.empty((n - 1,))
     for i in range(n - 1):
         dist_arr[i] = camera_states[i].distance_to(camera_states[i + 1])
-    num_frames_arr = dist_arr / dist_arr.sum() * (total_frames - n)
+    num_frames_arr = dist_arr / dist_arr.sum() * total_frames
 
     default_camera_state = camera_states[0].copy()
     new_camera_states: List[CameraState] = [camera_states[0]]
@@ -89,13 +89,13 @@ def camera_interpolation(
             camera_state.w2c = camera_states[i + 1].w2c
             new_camera_states.append(camera_state)
             continue
-        start_c2w = np.linalg.inv(camera_states[i].w2c)
-        end_c2w = np.linalg.inv(camera_states[i + 1].w2c)
-        sc2ec = end_c2w @ start_c2w
+        start_c2w = SE3.from_matrix(camera_states[i].w2c).inverse()
+        end_c2w = SE3.from_matrix(camera_states[i + 1].w2c).inverse()
+        ec2sc = start_c2w.inverse() @ end_c2w
         for j in range(1, num_frames + 1):
-            c2w = start_c2w @ (sc2ec * j / num_frames)
+            c2w = start_c2w @ SE3.exp(SE3.log(ec2sc) * j / num_frames)
             camera_state = default_camera_state.copy()
-            camera_state.w2c = np.linalg.inv(c2w)
+            camera_state.w2c = c2w.inverse().as_matrix()
             new_camera_states.append(camera_state)
 
     return new_camera_states
