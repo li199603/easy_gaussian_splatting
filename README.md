@@ -1,5 +1,5 @@
 # Easy Gaussian Splatting
-Gaussian Splatting implementation based on [gsplat](https://github.com/nerfstudio-project/gsplat). Easier to install and use than the [official implementation](https://github.com/graphdeco-inria/gaussian-splatting).  
+[Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) implementation based on [gsplat](https://github.com/nerfstudio-project/gsplat). Easy to install and use.  
 
 ## Setup
 You need to install pytorch first. We run the project in python3.10 + pytroch2.1 + cuda11.8 environment. But the project is not strict about which version to rely on.  
@@ -8,7 +8,7 @@ In linux, simple use ```pip install gsplat==1.0.0``` to install gsplat. You can 
 pip install -r requirements.txt
 pip install matplotlib open3d  # optional
 ```  
-You can use the following two formats of data to get your project up. Training with this data requires at least 16G RAM and 8G VRAM. The 16G RAM requirement is primarily for the ability to compile gsplat. It will build the CUDA code on the first run (JIT). You can also modify the configuration file to reduce gaussians densification, resulting in less VRAM usage.  
+You can use the following two formats of data to get your project up. Training with this data requires at least 16G RAM and 16G VRAM. The 16G RAM requirement is primarily for the ability to compile gsplat. It will build the CUDA code on the first run (JIT). You can also modify the configuration file to reduce gaussians densification, resulting in less VRAM usage.  
 - [tandt_db](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/input/tandt_db.zip) colmap format  
 - [nerf_synthetic](https://drive.google.com/drive/folders/1JDdLGDruGNXWnM1eqY1FNL9PlStjaKWi) blender format  
 
@@ -33,3 +33,4 @@ python launch_viewer.py -p path_to_training_output
 python launch_viewer.py -p path_to_training_output -i selected_iterations
 ```  
 This viewer allows you to view the scene being constructed while training. Using the ```--view_online``` in running train.py.  
+The viewer supports exporting rendered videos. You need to first add some cameras and set the parameters of the exported video. After clicking the 'export' button, the viewer will use cameras you added to interpolate multiple camera poses. Then it render multiple frames about these poses to synthesize the video.  

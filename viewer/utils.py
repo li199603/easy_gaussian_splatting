@@ -116,6 +116,7 @@ class RecordManager:
         self.camera_states: List[CameraState] = []
 
     def export_video(self) -> None:
+        print("Exporting video...")
         if len(self.camera_states) <= 1:
             print("ERROR: No enough camera states to export video")
             return
@@ -130,4 +131,4 @@ class RecordManager:
         vedio_name = datetime.now().strftime(r"%m-%d_%H-%M-%S") + ".mp4"
         vedio_path = self.output_dir / vedio_name
         imageio.mimsave(vedio_path, image_lst, fps=self.fps)  # type: ignore
-        print(f"Exported video to {vedio_path}")
+        print(f"Exported video saved at {vedio_path}")

@@ -6,7 +6,7 @@ from loguru import logger
 from pathlib import Path
 from viewer import CameraState
 import json
-from typing import Optional
+from typing import Optional, List
 
 
 def set_global_state(seed: int, device: str):
@@ -25,7 +25,7 @@ def set_global_state(seed: int, device: str):
     logger.configure(**log_config)  # type: ignore
 
 
-def load_camera_states(path: Path) -> list[CameraState]:
+def load_camera_states(path: Path) -> List[CameraState]:
     camera_states = []
     with open(path / "cameras.json", "r") as f:
         for cam in json.load(f):

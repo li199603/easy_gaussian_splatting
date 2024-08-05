@@ -24,7 +24,7 @@ class Evaluator:
         self.eval_render_num = eval_render_num
         self.ssim = StructuralSimilarityIndexMeasure(data_range=1.0).cuda()
         self.psnr = PeakSignalNoiseRatio(data_range=1.0).cuda()
-        self.lpips = LearnedPerceptualImagePatchSimilarity(normalize=True).cuda()
+        self.lpips = LearnedPerceptualImagePatchSimilarity(net_type="vgg", normalize=True).cuda()
 
     @torch.no_grad()
     def __call__(self, dataloader: DataLoader, model: nn.Module) -> Dict[str, Any]:
