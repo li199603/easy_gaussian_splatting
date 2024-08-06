@@ -44,16 +44,19 @@ def load_frames(path: Path, use_masks: bool, suffix: str = ".png") -> List[Frame
     return frames
 
 
-def generate_pointcloud(frames: List[Frame], num_points: int = 10000) -> Pointcloud:
+def generate_pointcloud(frames: List[Frame], num_points: int = 100000) -> Pointcloud:
     camera_positions = np.zeros((len(frames), 3))
     for i, frame in enumerate(frames):
         c2w = np.linalg.inv(frame.w2c)
         camera_positions[i] = c2w[:3, 3]
-    max_point = camera_positions.max(axis=0)
-    min_point = camera_positions.min(axis=0)
+    max_val = camera_positions.max()
+    min_val = camera_positions.min()
+    center_val = (max_val + min_val) / 2.0
+    min_val = center_val - (center_val - min_val) / 3
+    max_val = center_val + (max_val - center_val) / 3
 
-    xyzs = np.random.rand(num_points, 3) * (max_point - min_point) + min_point
-    rgbs = np.random.rand(num_points, 3) * 255.0
+    xyzs = np.random.rand(num_points, 3) * (max_val - min_val) + min_val
+    rgbs = np.ones((num_points, 3)) * 127.0
     rgbs = np.floor(rgbs).astype(np.uint8)
     pc = Pointcloud(xyzs, rgbs)
     return pc

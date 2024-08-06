@@ -2,7 +2,7 @@
 [Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) implementation based on [gsplat](https://github.com/nerfstudio-project/gsplat). Easy to install and use.  
 
 ## Setup
-You need to install pytorch first. We run the project in python3.10 + pytroch2.1 + cuda11.8 environment. But the project is not strict about which version to rely on.  
+You need to install pytorch first. We run the project in python3.10 + pytroch2.1 environment. But the project is not strict about which version to rely on.  
 In linux, simple use ```pip install gsplat==1.0.0``` to install gsplat. You can install the newer version, but the compilation process takes up more memory (could be more than 16G RAM). To install gsplat on Windows, please check [this instruction](https://github.com/nerfstudio-project/gsplat/blob/main/docs/INSTALL_WIN.md). Run the following command to install the other dependencies.  
 ```bash
 pip install -r requirements.txt
@@ -13,20 +13,20 @@ You can use the following two formats of data to get your project up. Training w
 - [nerf_synthetic](https://drive.google.com/drive/folders/1JDdLGDruGNXWnM1eqY1FNL9PlStjaKWi) blender format  
 
 ## Usage
-### training
+### Training
 ```bash
-python train.py -c path_to_config -d path_to_colmap_or_blender_format_data -o path_to_output(default: ./output)
+python train.py -c path_to_config -d path_to_data -o path_to_output(default: ./output)
 # eg:
 python train.py -c configs/tandt_db.yaml -d data/tandt_db/tandt/truck
 python train.py -c configs/nerf_synthetic.yaml -d data/nerf_synthetic/lego
 ```  
-### evaluation
+### Evaluation
 After the training is complete, the script train.py performs the evaluation by default. We can still evaluate the gaussian splatting model by use  
 ```bash
 python eval.py -p path_to_training_output
 python eval.py -p path_to_training_output -i selected_iterations
 ```  
-### viewer
+### Viewer
 We provide a simple viewer to visualize the results of the training. You can use the following command to run the viewer. You can control with ```W, A, S, D, Q, E``` for camera translation and ```↑ ↓ ← →``` for rotation. In viewer, the arrow keys are used to control the camera's rotation around a point. We also provide GUI buttons ```roll+, roll-, pitch+, pitch-, yaw+, yaw-``` to control the camera's rotation around itself.  
 ```bash
 python launch_viewer.py -p path_to_training_output
