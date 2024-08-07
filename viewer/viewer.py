@@ -30,7 +30,6 @@ class Viewer:
         self.target_camera_states = target_camera_states
         self.in_training_mode = in_training_mode
         self.video_output_dir = video_output_dir
-        self.video_output_dir.mkdir(parents=True, exist_ok=True)
         self.runtime_map: Dict[int, ViewerRuntime] = {}
         self.delay_render_map: Dict[int, DelayRender] = {}
 

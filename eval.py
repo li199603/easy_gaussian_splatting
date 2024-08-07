@@ -24,7 +24,7 @@ class Evaluator:
         self.eval_render_num = eval_render_num
         self.ssim = StructuralSimilarityIndexMeasure(data_range=1.0).cuda()
         self.psnr = PeakSignalNoiseRatio(data_range=1.0).cuda()
-        self.lpips = LearnedPerceptualImagePatchSimilarity(net_type="vgg", normalize=True).cuda()
+        self.lpips = LearnedPerceptualImagePatchSimilarity("vgg", normalize=True).cuda()
 
     @torch.no_grad()
     def __call__(self, dataloader: DataLoader, model: nn.Module) -> Dict[str, Any]:
@@ -91,13 +91,14 @@ def eval(training_output_path: str, iterations: Optional[int] = None):
         cfg.data,
         cfg.data_format,
         cfg.output,
-        cfg.white_background,
         cfg.total_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
         cfg.eval_in_val,
         cfg.eval_in_test,
         cfg.use_masks,
+        cfg.mask_expand_pixels,
+        cfg.white_background,
     )
     scene.train_indexes = list(set(scene.train_indexes))
     train_dataloader = DataLoader(

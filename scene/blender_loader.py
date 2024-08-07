@@ -7,7 +7,13 @@ import numpy as np
 from loguru import logger
 
 
-def load_frames(path: Path, use_masks: bool, suffix: str = ".png") -> List[Frame]:
+def load_frames(
+    path: Path,
+    use_masks: bool,
+    mask_expand_pixels: int,
+    white_background: bool,
+    suffix: str = ".png",
+) -> List[Frame]:
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist")
     frames: List[Frame] = []
@@ -32,6 +38,7 @@ def load_frames(path: Path, use_masks: bool, suffix: str = ".png") -> List[Frame
                 Frame(
                     image_path,
                     mask_path if mask_path.exists() and use_masks else None,
+                    mask_expand_pixels,
                     width,
                     height,
                     fx,
@@ -39,6 +46,7 @@ def load_frames(path: Path, use_masks: bool, suffix: str = ".png") -> List[Frame
                     cx,
                     cy,
                     w2c,
+                    white_background,
                 )
             )
     return frames
@@ -65,16 +73,33 @@ def generate_pointcloud(frames: List[Frame], num_points: int = 100000) -> Pointc
 def load_blender_data(
     path: str,
     use_masks: bool,
+    mask_expand_pixels: int,
     eval: bool,
     eval_in_val: bool,
     eval_in_test: bool,
+    white_background: bool,
 ) -> Tuple[List[Frame], Pointcloud, List[int], List[int]]:
-    train_frames = load_frames(Path(path) / "transforms_train.json", use_masks)
+    train_frames = load_frames(
+        Path(path) / "transforms_train.json",
+        use_masks,
+        mask_expand_pixels,
+        white_background,
+    )
     eval_frames = []
     if eval_in_val:
-        eval_frames += load_frames(Path(path) / "transforms_val.json", use_masks)
+        eval_frames += load_frames(
+            Path(path) / "transforms_val.json",
+            use_masks,
+            mask_expand_pixels,
+            white_background,
+        )
     if eval_in_test:
-        eval_frames += load_frames(Path(path) / "transforms_test.json", use_masks)
+        eval_frames += load_frames(
+            Path(path) / "transforms_test.json",
+            use_masks,
+            mask_expand_pixels,
+            white_background,
+        )
 
     frames = eval_frames + train_frames
     num_frames = len(frames)

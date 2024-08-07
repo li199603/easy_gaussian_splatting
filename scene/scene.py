@@ -26,20 +26,35 @@ class Scene:
         data_path: str,
         data_format: Literal["colmap", "blender"],
         output_path: Optional[str],
-        white_background: bool,
         total_iterations: int,
         eval: bool,
         eval_split_ratio: float,
         eval_in_val: bool,
         eval_in_test: bool,
         use_masks: bool,
+        mask_expand_pixels: int,
+        white_background: bool,
     ):
-        self.white_background = white_background
         if data_format == "colmap":
-            colmap_data = load_colmap_data(data_path, use_masks, eval, eval_split_ratio)
+            colmap_data = load_colmap_data(
+                data_path,
+                use_masks,
+                mask_expand_pixels,
+                eval,
+                eval_split_ratio,
+                white_background,
+            )
             self.frames, self.pc, self.train_indexes, self.eval_indexes = colmap_data
         elif data_format == "blender":
-            blender_data = load_blender_data(data_path, use_masks, eval, eval_in_val, eval_in_test)
+            blender_data = load_blender_data(
+                data_path,
+                use_masks,
+                mask_expand_pixels,
+                eval,
+                eval_in_val,
+                eval_in_test,
+                white_background,
+            )
             self.frames, self.pc, self.train_indexes, self.eval_indexes = blender_data
         else:
             raise ValueError(f"Invalid data_format: {data_format}")
@@ -71,7 +86,7 @@ class Scene:
             frame = self.frames[self.eval_indexes[index]]
         else:
             raise ValueError(f"Invalid split: {split}")
-        return frame.to_data(self.white_background)
+        return frame.to_data()
 
     def _export_cameras_json(self, save_path: Path):
         frame_jsons = [frame.to_json(id) for id, frame in enumerate(self.frames)]

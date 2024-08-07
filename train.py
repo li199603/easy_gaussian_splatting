@@ -24,13 +24,14 @@ def train(cfg: easydict.EasyDict):
         cfg.data,
         cfg.data_format,
         cfg.output,
-        cfg.white_background,
         cfg.total_iterations,
         cfg.eval,
         cfg.eval_split_ratio,
         cfg.eval_in_val,
         cfg.eval_in_test,
         cfg.use_masks,
+        cfg.mask_expand_pixels,
+        cfg.white_background,
     )
     train_dataloader = DataLoader(
         scene.train_dataset,

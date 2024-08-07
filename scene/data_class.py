@@ -42,6 +42,7 @@ class Frame:
         self,
         image_path: Path,
         mask_path: Optional[Path],
+        mask_expand_pixels: int,
         width: int,
         height: int,
         fx: float,
@@ -49,9 +50,11 @@ class Frame:
         cx: float,
         cy: float,
         w2c: np.ndarray,
+        white_background: bool,
     ):
         self.image_path = image_path
         self.mask_path = mask_path
+        self.mask_expand_pixels = mask_expand_pixels
         self.width = width
         self.height = height
         self.fx = fx
@@ -59,6 +62,7 @@ class Frame:
         self.cx = cx
         self.cy = cy
         self.w2c = w2c  # colmap/opencv (X right, Y down, Z forward)
+        self.white_background = white_background
 
     def to_json(self, id: int):
         c2w = np.linalg.inv(self.w2c)
@@ -106,7 +110,7 @@ class Frame:
         plt.show()
         plt.close()
 
-    def to_data(self, white_background: bool) -> Dict[str, Any]:
+    def to_data(self) -> Dict[str, Any]:
         w2c = torch.tensor(self.w2c, dtype=torch.float32)
 
         image = Image.open(self.image_path)
@@ -118,7 +122,7 @@ class Frame:
             image_tensor = torch.tensor(image_arr, dtype=torch.float32)
             background = torch.full(
                 (height, width, 3),
-                fill_value=1.0 if white_background else 0.0,
+                fill_value=1.0 if self.white_background else 0.0,
                 dtype=torch.float32,
             )
             alpha = image_tensor[..., 3:4]

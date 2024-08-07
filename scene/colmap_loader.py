@@ -153,7 +153,12 @@ def load_pointcloud(path: Path) -> Pointcloud:
 
 
 def load_colmap_data(
-    path: str, use_masks: bool, eval: bool, eval_split_ratio: float
+    path: str,
+    use_masks: bool,
+    mask_expand_pixels: int,
+    eval: bool,
+    eval_split_ratio: float,
+    white_background: bool,
 ) -> Tuple[List[Frame], Pointcloud, List[int], List[int]]:
     intrinsics_path = Path(path) / "sparse" / "0" / "cameras.bin"
     extrinsics_path = Path(path) / "sparse" / "0" / "images.bin"
@@ -176,6 +181,7 @@ def load_colmap_data(
             Frame(
                 image_path,
                 mask_path if mask_path.exists() and use_masks else None,
+                mask_expand_pixels,
                 camera.width,
                 camera.height,
                 camera.fx,
@@ -183,6 +189,7 @@ def load_colmap_data(
                 camera.cx,
                 camera.cy,
                 w2c,
+                white_background,
             )
         )
         if frames[-1].mask_path is not None:

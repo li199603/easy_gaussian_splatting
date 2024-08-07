@@ -129,6 +129,7 @@ class RecordManager:
             image = np.floor(image).astype(np.uint8)
             image_lst.append(image)
         vedio_name = datetime.now().strftime(r"%m-%d_%H-%M-%S") + ".mp4"
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         vedio_path = self.output_dir / vedio_name
         imageio.mimsave(vedio_path, image_lst, fps=self.fps)  # type: ignore
         print(f"Exported video saved at {vedio_path}")

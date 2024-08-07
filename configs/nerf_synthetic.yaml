@@ -21,6 +21,7 @@ sh_degree: 3
 sh_degree_interval: 2000
 
 use_masks: false
+mask_expand_pixels: 0
 
 means_lr_init: 0.001
 means_lr_final: 0.00001
