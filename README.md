@@ -1,6 +1,13 @@
 # Easy Gaussian Splatting
 [Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) implementation based on [gsplat](https://github.com/nerfstudio-project/gsplat). Easy to install and use.  
 
+## Implementation Result
+PSNR scores for some scenes, compare with official implementation.  
+|               | Truck  | Train  | Dr Johnson | Playroom | Drums  | Lego    |
+|:-------------:|:------:|:------:|:----------:|:--------:|:------:|:-------:|
+| Official Impl | 25.19  | 21.10  | 28.77      | 30.04    | 26.15  | 35.78   |
+| Ours          | 25.16  | 21.26  | 28.12      | 30.20    | 25.75  | 36.27   |
+
 ## Setup
 You need to install pytorch first. We run the project in python3.10 + pytroch2.1 environment. But the project is not strict about which version to rely on.  
 In linux, simple use ```pip install gsplat==1.0.0``` to install gsplat. You can install the newer version, but the compilation process takes up more memory (could be more than 16G RAM). To install gsplat on Windows, please check [this instruction](https://github.com/nerfstudio-project/gsplat/blob/main/docs/INSTALL_WIN.md). Run the following command to install the other dependencies.  
