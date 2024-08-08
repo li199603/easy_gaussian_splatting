@@ -93,20 +93,14 @@ class Frame:
             raise ValueError("mask_path is None")
 
         image_arr = get_image_arr(self.image_path, self.white_background)
-        image_arr = image_arr.astype(np.float64)
-        mask = Image.open(self.mask_path)
-        if mask.mode != "1":
-            raise ValueError("only support mask on '1' mode")
-        # 1: object to be removed，0: scene to be reconstructed
-        one_hot_mask = np.array(mask, np.float64) / 255.0
-        mask_color = np.array([86, 156, 214], dtype=np.float64)[None, None]
-
-        alpha_arr = (
-            np.ones_like(image_arr, dtype=np.float64) * alpha * one_hot_mask[..., None]
-        )
-        masked_image = (1 - alpha_arr) * image_arr + alpha_arr * mask_color
-        masked_image = masked_image.astype(np.uint8)
-        plt.imshow(masked_image)
+        image_arr = image_arr.astype(np.float32)  # [h, w, 3]
+        mask_arr = get_mask_arr(self.mask_path, self.mask_expand_pixels)
+        mask_arr = mask_arr[..., None].astype(np.float32)  # [h, w, 1]
+        mask_color = np.array([19, 60, 218], dtype=np.float32)[None, None]  # [1, 1, 3]
+        alpha_arr = np.ones_like(image_arr) * alpha * mask_arr  # [h, w, 3]
+        masked_image_arr = (1 - alpha_arr) * image_arr + alpha_arr * mask_color
+        masked_image_arr = masked_image_arr.astype(np.uint8)
+        plt.imshow(masked_image_arr)
         plt.show()
         plt.close()
 
@@ -119,10 +113,7 @@ class Frame:
         image_tensor = torch.tensor(image_arr, dtype=torch.float32)
 
         if self.mask_path is not None:
-            mask = Image.open(self.mask_path)
-            mask_arr = np.array(mask, dtype=np.float32) / 255.0
-            if mask.mode != "1":
-                raise ValueError("only support mask on '1' mode")
+            mask_arr = get_mask_arr(self.mask_path, self.mask_expand_pixels)
             mask_tensor = torch.tensor(mask_arr, dtype=torch.float32)
             if mask_tensor.shape != image_tensor.shape[:2]:
                 raise ValueError(
@@ -190,3 +181,32 @@ def get_image_arr(image_path: Path, white_background: bool) -> np.ndarray:
         raise ValueError(
             f"only support image on 'RGB' or 'RGBA' mode, but get '{image.mode}'"
         )
+
+
+def expand_mask(mask: np.ndarray, expand_pixels: int) -> np.ndarray:
+    if expand_pixels == 0:
+        return mask
+    h, w = mask.shape
+    new_mask = np.zeros((h + 2 * expand_pixels, w + 2 * expand_pixels), dtype=np.uint8)
+    for left_up_x in range(2 * expand_pixels):
+        for left_up_y in range(2 * expand_pixels):
+            right_down_x = left_up_x + w
+            right_down_y = left_up_y + h
+            new_mask[left_up_y:right_down_y, left_up_x:right_down_x] += mask
+            np.clip(new_mask, 0, 1, out=new_mask)
+    left_up_x = expand_pixels
+    left_up_y = expand_pixels
+    right_down_x = left_up_x + w
+    right_down_y = left_up_y + h
+    return new_mask[left_up_y:right_down_y, left_up_x:right_down_x]
+
+
+def get_mask_arr(mask_path: Path, expand_pixels: int) -> np.ndarray:
+    mask = Image.open(mask_path)
+    mask_arr = np.array(mask, dtype=np.uint8)
+    if mask_arr.ndim != 2:
+        raise ValueError(f"only support mask on 2D, but get {mask_arr.ndim}D")
+    # one-hot mask, 1: object to be removed，0: scene to be constructed
+    mask_arr[mask_arr >= 1] = 1
+    mask_arr = expand_mask(mask_arr, expand_pixels)
+    return mask_arr
