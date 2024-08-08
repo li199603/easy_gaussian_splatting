@@ -242,6 +242,7 @@ if __name__ == "__main__":
     with open(Path(cfg.output) / "config.yaml", "w") as f:
         yaml.dump(dict(cfg), f, sort_keys=False)
 
+    logger.info("----------------------- train -----------------------")
     train(cfg)
     logger.info("training finished")
     logger.info("--------------------- evaluation ---------------------")

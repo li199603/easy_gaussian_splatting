@@ -81,9 +81,8 @@ class Frame:
     def show_image(self):
         import matplotlib.pyplot as plt
 
-        image = Image.open(self.image_path)
-        image = np.array(image, dtype=np.uint8)
-        plt.imshow(image)
+        image_arr = get_image_arr(self.image_path, self.white_background)
+        plt.imshow(image_arr)
         plt.show()
         plt.close()
 
@@ -93,7 +92,8 @@ class Frame:
         if self.mask_path is None:
             raise ValueError("mask_path is None")
 
-        image = np.array(Image.open(self.image_path), np.float64)
+        image_arr = get_image_arr(self.image_path, self.white_background)
+        image_arr = image_arr.astype(np.float64)
         mask = Image.open(self.mask_path)
         if mask.mode != "1":
             raise ValueError("only support mask on '1' mode")
@@ -102,9 +102,9 @@ class Frame:
         mask_color = np.array([86, 156, 214], dtype=np.float64)[None, None]
 
         alpha_arr = (
-            np.ones_like(image, dtype=np.float64) * alpha * one_hot_mask[..., None]
+            np.ones_like(image_arr, dtype=np.float64) * alpha * one_hot_mask[..., None]
         )
-        masked_image = (1 - alpha_arr) * image + alpha_arr * mask_color
+        masked_image = (1 - alpha_arr) * image_arr + alpha_arr * mask_color
         masked_image = masked_image.astype(np.uint8)
         plt.imshow(masked_image)
         plt.show()
@@ -113,24 +113,10 @@ class Frame:
     def to_data(self) -> Dict[str, Any]:
         w2c = torch.tensor(self.w2c, dtype=torch.float32)
 
-        image = Image.open(self.image_path)
-        image_arr = np.array(image, dtype=np.float32) / 255.0
+        image_arr = get_image_arr(self.image_path, self.white_background)
+        image_arr = image_arr.astype(np.float32) / 255.0
         height, width = image_arr.shape[:2]
-        if image.mode == "RGB":
-            image_tensor = torch.tensor(image_arr, dtype=torch.float32)
-        elif image.mode == "RGBA":
-            image_tensor = torch.tensor(image_arr, dtype=torch.float32)
-            background = torch.full(
-                (height, width, 3),
-                fill_value=1.0 if self.white_background else 0.0,
-                dtype=torch.float32,
-            )
-            alpha = image_tensor[..., 3:4]
-            image_tensor = image_tensor[..., :3] * alpha + background * (1 - alpha)
-        else:
-            raise ValueError(
-                f"only support image on 'RGB' or 'RGBA' mode, but get '{image.mode}'"
-            )
+        image_tensor = torch.tensor(image_arr, dtype=torch.float32)
 
         if self.mask_path is not None:
             mask = Image.open(self.mask_path)
@@ -183,3 +169,24 @@ def data_to_device(data: Dict[str, Any], non_blocking: bool = True):
     data["w2c"] = data["w2c"].cuda(non_blocking=non_blocking)
     data["image"] = data["image"].cuda(non_blocking=non_blocking)
     data["mask"] = data["mask"].cuda(non_blocking=non_blocking)
+
+
+def get_image_arr(image_path: Path, white_background: bool) -> np.ndarray:
+    image = Image.open(image_path)
+    if image.mode == "RGB":
+        image_arr = np.array(image, dtype=np.uint8)
+        return image_arr
+    elif image.mode == "RGBA":
+        image_arr = np.array(image, dtype=np.float64)
+        background = np.full(
+            (image_arr.shape[0], image_arr.shape[1], 3),
+            fill_value=255.0 if white_background else 0.0,
+            dtype=np.float64,
+        )
+        alpha = image_arr[..., 3:4] / 255.0
+        image_arr = image_arr[..., :3] * alpha + background * (1 - alpha)  # type: ignore
+        return image_arr.astype(np.uint8)
+    else:
+        raise ValueError(
+            f"only support image on 'RGB' or 'RGBA' mode, but get '{image.mode}'"
+        )
