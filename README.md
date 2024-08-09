@@ -45,3 +45,29 @@ python launch_viewer.py -p path_to_training_output -i selected_iterations
 ```  
 This viewer allows you to view the scene being constructed while training. Using the ```--view_online``` in running train.py.  
 The viewer supports exporting rendered videos. You need to first add some cameras and set the parameters of the exported video. After clicking the 'export' button, the viewer will use cameras you added to interpolate multiple camera poses. Then it render multiple frames about these poses to synthesize the video.  
+
+## Funny Masks
+We take the mask into account in the calculation of loss, by this ```render_img = mask * gt_img + (1.0 - mask) * render_img```. In this way, the masked region of the image will not have any influence on the generation of the gaussian points. Because the gradient cannot be backpropagated to the gaussian points from the subsequent calculation of either L1 loss or SSIM loss, which means that the mask region does not produce a gradient. We can use masks to control the generated area of the gaussian points, so that the target object is removed from the constructed scene.  
+We use the drums scene in the nerf synthetic dataset to show this funny feature. We will remove all cymbals from the scene. Raw data for drums scenes is still available [here](https://drive.google.com/drive/folders/1JDdLGDruGNXWnM1eqY1FNL9PlStjaKWi) and masks data is available [here](https://github.com/user-attachments/files/16555816/drums_masks.zip). Put the masks data into the drums data folder as follows:  
+
+```text
+drums
+├── test
+├── train
+├── train_masks
+    ├── r_0.png
+    ├── r_1.png
+    ├── ...
+├── val
+├── ...
+```  
+Replace the corresponding parameter in configs/ nerf_synthet.yaml with  
+```yaml
+use_masks: true
+mask_expand_pixels: 4
+```  
+Run ```python train.py -c configs/nerf_synthetic.yaml -d path_to_drums_data```, and you will see the cymbals are removed from the scene. It should be noted that the evaluation on val set and test set are not accurate due to the lack of masks for these two sets.  
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/298ae520-6d39-4297-8611-d871e79d6e48" width="50%" />
+</div>  
