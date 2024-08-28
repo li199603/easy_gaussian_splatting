@@ -71,3 +71,15 @@ def load_gaussian_model(
     logger.info(f"load checkpoint from {target_cpt}")
     gaussian_model = torch.load(target_cpt, map_location="cpu").cuda()
     return gaussian_model
+
+
+def save_gaussian_model(
+    path: Path, gaussian_model: torch.nn.Module, save_optimizer: bool = False
+):
+    tmp_optimizer = None
+    if not save_optimizer:
+        tmp_optimizer = gaussian_model.optimizer
+        gaussian_model.optimizer = None  # type: ignore
+    torch.save(gaussian_model, path)
+    if tmp_optimizer is not None:
+        gaussian_model.optimizer = tmp_optimizer

@@ -15,7 +15,7 @@ from eval import Evaluator
 from typing import Dict, Any
 import time
 from eval import eval
-from utils import set_global_state, load_camera_states
+from utils import set_global_state, load_camera_states, save_gaussian_model
 from viewer import Viewer, CameraState
 
 
@@ -114,7 +114,7 @@ def train(cfg: easydict.EasyDict):
                     Path(cfg.output) / "checkpoints" / f"iterations_{step}.pth"
                 )
                 model_save_path.parent.mkdir(exist_ok=True)
-                torch.save(gaussian_model, model_save_path)
+                save_gaussian_model(model_save_path, gaussian_model)
             # evaluation
             if len(eval_dataloader) != 0 and (step == 1 or step % cfg.eval_every == 0):
                 gaussian_model.eval()
