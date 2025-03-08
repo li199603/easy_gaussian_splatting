@@ -192,10 +192,18 @@ class ViewerRuntime(threading.Thread):
                 "width", initial_value=self.width, min=1, step=1
             )
             gui_number_fov_x = self.client.gui.add_number(
-                "fov x", initial_value=self.fov_x / np.pi * 180, min=0, max=180, step=1
+                "fov x",
+                initial_value=float(self.fov_x / np.pi * 180),
+                min=0,
+                max=180,
+                step=1,
             )
             gui_number_fov_y = self.client.gui.add_number(
-                "fov y", initial_value=self.fov_y / np.pi * 180, min=0, max=180, step=1
+                "fov y",
+                initial_value=float(self.fov_y / np.pi * 180),
+                min=0,
+                max=180,
+                step=1,
             )
         with self.client.gui.add_folder("Rotation"):
             gui_number_rotation_angle = self.client.gui.add_number(

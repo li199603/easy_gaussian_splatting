@@ -69,7 +69,9 @@ def load_gaussian_model(
             raise ValueError("no checkpoint found")
 
     logger.info(f"load checkpoint from {target_cpt}")
-    gaussian_model = torch.load(target_cpt, map_location="cpu").cuda()
+    gaussian_model = torch.load(
+        target_cpt, map_location="cpu", weights_only=False
+    ).cuda()
     return gaussian_model
 
 
